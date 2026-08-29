@@ -79,7 +79,7 @@ public final class ChillZoneHomes implements ModInitializer {
                                     "Set " + target.getScoreboardName() + "'s home limit to " + amount + "."
                                 ).withStyle(ChatFormatting.GREEN), false);
                                 return 1;
-                            })))))
+                            }))))
             );
         });
 
