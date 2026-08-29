@@ -64,7 +64,7 @@ public final class ChillZoneHomes implements ModInitializer {
 
             dispatcher.register(Commands.literal("homes")
                 .then(Commands.literal("limit")
-                    .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
+                    .requires(LuckPermsPermissions::canManageLimits)
                     .then(Commands.argument("player", EntityArgument.player())
                         .then(Commands.argument("amount", IntegerArgumentType.integer(1, 24))
                             .executes(ctx -> {
@@ -77,6 +77,19 @@ public final class ChillZoneHomes implements ModInitializer {
                                 );
                                 ctx.getSource().sendSuccess(() -> Component.literal(
                                     "Set " + target.getScoreboardName() + "'s home limit to " + amount + "."
+                                ).withStyle(ChatFormatting.GREEN), false);
+                                return 1;
+                            }))
+                        .then(Commands.literal("reset")
+                            .executes(ctx -> {
+                                ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                String key = config().luckPermsMetaKey;
+                                String command = "lp user " + target.getScoreboardName() + " meta unset " + key;
+                                ctx.getSource().getServer().getCommands().performPrefixedCommand(
+                                    ctx.getSource().getServer().createCommandSourceStack(), command
+                                );
+                                ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Reset " + target.getScoreboardName() + "'s home limit to the default."
                                 ).withStyle(ChatFormatting.GREEN), false);
                                 return 1;
                             }))))

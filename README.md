@@ -45,3 +45,8 @@ Configuration is stored in `config/chill-zone-homes.json`.
 - Fabric API
 - Java 25
 - LuckPerms recommended for rank/player limits
+
+## 0.3.1
+- `/homes limit <player> <amount>` now checks the LuckPerms permission `chillzonehomes.command.limit` instead of vanilla OP level.
+- Console may always use the command.
+- Added `/homes limit <player> reset` to remove the `homes-max` override and return the player to the configured default.
