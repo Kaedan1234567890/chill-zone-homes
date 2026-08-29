@@ -1,59 +1,47 @@
-# Chill Zone Homes — 0.2.0 Alpha
+# Chill Zone Homes
 
-Custom server-side Fabric `/home` system for Minecraft 26.2, inspired by the interaction flow shown in the DonutSMP reference video.
+Server-side Fabric homes mod for Chill Zone SMP.
 
-## Planned/implemented behavior
+## 0.3.0 alpha
 
-- `/home` opens a vanilla chest GUI.
-- Saved homes are clickable.
-- Empty unlocked slots show **New Home**.
-- Slots above the player's allowance show **Locked**.
-- **Show More** pages through additional visible slots.
-- Clicking a saved home opens **Teleport / Change Icon / Rename / Delete / Back**.
-- Homes are stored by player UUID in the world folder.
-- Default home allowance comes from `config/chill-zone-homes.json`.
-- Optional per-player/per-group LuckPerms override uses meta key `homes-max`.
-- Cross-dimension homes are supported.
-- Server-side only: players do not install the mod client-side.
+- `/home` opens the 6x9 Chill Zone Homes GUI.
+- `/home <home name>` teleports directly to a saved home.
+- `/home ` autocomplete suggests the player's saved home names.
+- Exact approved 6x9 layout with glass border, barrier-locked slots, and centred book.
+- 3 homes by default; up to 24 accessible through the configured/LuckPerms limit.
+- Existing 0.2.0 home data remains compatible.
+- Home management: Teleport, Change Icon, Rename, Delete, Back.
+- Change Icon opens a 6x9 multi-page picker containing Minecraft items/blocks.
+- Search sign in the icon picker filters icons by name; clear search restores the full list.
+- Rename/search text entry is configured to cost 0 XP.
+- `/homes limit <player> <amount>` provides a shorter owner command and writes the same LuckPerms `homes-max` meta through LuckPerms' command.
 
-## Default limit
+## LuckPerms
 
-The generated config defaults to:
+The mod reads the meta key `homes-max`.
 
-```json
-{
-  "defaultHomes": 3,
-  "maximumVisibleSlots": 18,
-  "luckPermsMetaKey": "homes-max",
-  "showLockedSlots": true,
-  "allowCrossDimensionTeleport": true
-}
-```
-
-A LuckPerms override can later be assigned with:
+Examples:
 
 ```text
-/lp user PLAYERNAME meta set homes-max 5
+/lp user PlayerName meta set homes-max 5
+/lp user PlayerName meta unset homes-max
 ```
 
-or to a group:
+The shorter Chill Zone command is:
 
 ```text
-/lp group booster meta set homes-max 5
+/homes limit PlayerName 5
 ```
 
-Removing the meta value returns the player to the configured default.
+## Data
 
-## Build target
+Homes are saved in the world root as `chill_zone_homes.json`.
+Configuration is stored in `config/chill-zone-homes.json`.
+
+## Requirements
 
 - Minecraft 26.2
-- Fabric Loader 0.19.3
-- Fabric API 0.154.2+26.2
-- Fabric Loom 1.17-SNAPSHOT
+- Fabric Loader 0.19+
+- Fabric API
 - Java 25
-
-A GitHub Actions workflow is included at `.github/workflows/build.yml`. It provisions Java 25 and Gradle 9.7 automatically and uploads the compiled server JAR as a workflow artifact.
-
-## Important
-
-This is still an **alpha source build** until the GitHub Actions build succeeds and the resulting JAR is tested on a Minecraft 26.2 Fabric server. Do not upload the source ZIP to Shockbyte.
+- LuckPerms recommended for rank/player limits

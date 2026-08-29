@@ -39,10 +39,21 @@ public final class HomeStore {
     public List<Home> getHomes(UUID uuid) {
         return homes.computeIfAbsent(uuid, u -> new ArrayList<>());
     }
+
     public Home getHome(UUID uuid, int index) {
         List<Home> list = getHomes(uuid);
         return index >= 0 && index < list.size() ? list.get(index) : null;
     }
+
+    public Home findHomeByName(UUID uuid, String requested) {
+        if (requested == null) return null;
+        String wanted = requested.strip();
+        for (Home home : getHomes(uuid)) {
+            if (home.name().equalsIgnoreCase(wanted)) return home;
+        }
+        return null;
+    }
+
     public void addHome(UUID uuid, Home home) { getHomes(uuid).add(home); save(); }
     public void setHome(UUID uuid, int index, Home home) { getHomes(uuid).set(index, home); save(); }
     public void deleteHome(UUID uuid, int index) { getHomes(uuid).remove(index); save(); }

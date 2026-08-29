@@ -3,7 +3,7 @@
   "id": "chillzonehomes",
   "version": "${version}",
   "name": "Chill Zone Homes",
-  "description": "Donut-style server-side /home GUI with configurable and LuckPerms-controlled home limits.",
+  "description": "Server-side Chill Zone /home GUI with direct teleports, searchable icons, and LuckPerms-controlled home limits.",
   "authors": ["Chill Zone SMP"],
   "contact": {},
   "license": "MIT",
