@@ -120,7 +120,7 @@ public final class SignInputManager {
         if (answer.length() > 32) answer = answer.substring(0, 32);
 
         final String submitted = answer;
-        player.getServer().execute(() -> pending.callback.accept(submitted));
+        pending.callback.accept(submitted);
         return true;
     }
 
