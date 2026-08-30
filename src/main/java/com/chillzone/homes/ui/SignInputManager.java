@@ -84,6 +84,11 @@ public final class SignInputManager {
         };
 
         SignBlockEntity fakeSign = new SignBlockEntity(pos, signState);
+        // SignBlockEntity#setText marks the block entity as updated. A detached
+        // block entity has no level and crashes the dedicated server there, so
+        // attach the player's current level before setting the virtual text.
+        fakeSign.setLevel(player.level());
+        fakeSign.setAllowedPlayerEditor(player.getUUID());
         fakeSign.setText(new SignText(lines, lines, DyeColor.BLACK, false), true);
 
         PENDING.put(player.getUUID(), new PendingInput(pos, callback));

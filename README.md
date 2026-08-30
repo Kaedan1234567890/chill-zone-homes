@@ -50,3 +50,7 @@ Configuration is stored in `config/chill-zone-homes.json`.
 - `/homes limit <player> <amount>` now checks the LuckPerms permission `chillzonehomes.command.limit` instead of vanilla OP level.
 - Console may always use the command.
 - Added `/homes limit <player> reset` to remove the `homes-max` override and return the player to the configured default.
+
+
+## 0.3.2 Fix 2
+Fixes dedicated-server crash when opening sign text input by attaching the temporary sign block entity to the player's current server level before setting its text.
