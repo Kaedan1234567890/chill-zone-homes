@@ -1,6 +1,6 @@
-# Chill Zone Homes 0.3.2 Alpha Fix 4
+# Chill Zone Homes 0.3.2 Alpha Fix 5
 
-Fix 4 corrects the sign submission pipeline for Java and Bedrock/Geyser:
+Fix 5 corrects the sign submission pipeline for Java and Bedrock/Geyser:
 
 - lets vanilla fully process `handleSignUpdate` before Chill Zone Homes reads the submitted text;
 - no longer cancels the packet before Minecraft's thread handoff/validation;
