@@ -3,10 +3,8 @@ package com.chillzone.homes.ui;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
-import net.minecraft.network.protocol.game.ClientboundOpenSignEditorPacket;
 import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.block.Blocks;
@@ -24,12 +22,14 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
- * Server-side, cross-play sign text input.
+ * Server-side sign text input that works through the normal vanilla sign flow.
  *
- * No real sign is placed in the world. A temporary sign is sent only to the
- * requesting player's client, the vanilla sign editor is opened, and the
- * returned sign-update packet is intercepted by our mixin. The real block is
- * immediately re-sent afterwards so nothing in the world is changed.
+ * A temporary real sign is placed in a nearby pair of AIR blocks (with a
+ * temporary barrier underneath it for support), then ServerPlayer#openTextEdit
+ * opens the vanilla editor. Because the sign truly exists server-side, both
+ * Java and Geyser/Floodgate can follow the normal sign-edit protocol.
+ *
+ * The temporary blocks are removed as soon as the player submits/cancels.
  */
 public final class SignInputManager {
     private static final Map<UUID, PendingInput> PENDING = new HashMap<>();
@@ -59,23 +59,40 @@ public final class SignInputManager {
     }
 
     public static void open(ServerPlayer player, String prompt, Consumer<String> callback) {
-        // Close the chest/menu first. A short delay prevents Bedrock/Geyser from
-        // instantly dismissing the sign screen while the previous menu closes.
+        // Close the homes inventory first, then wait a few ticks before opening
+        // the sign editor. This avoids the old container close dismissing the
+        // next screen on Java or through Geyser.
         player.closeContainer();
-        PENDING.remove(player.getUUID());
+        cancelPending(player);
         OPEN_QUEUE.removeIf(s -> s.playerId.equals(player.getUUID()));
-        OPEN_QUEUE.add(new ScheduledOpen(player.getUUID(), prompt, callback, 3));
+        OPEN_QUEUE.add(new ScheduledOpen(player.getUUID(), prompt, callback, 4));
     }
 
     private static void openNow(ServerPlayer player, String prompt, Consumer<String> callback) {
-        // Keep the fake sign close enough that both Java and Geyser treat the
-        // edit screen as a normal nearby sign interaction.
-        BlockPos pos = player.blockPosition().above(3);
-        BlockState signState = Blocks.OAK_SIGN.defaultBlockState();
+        ServerLevel level = (ServerLevel) player.level();
+        SignLocation location = findSafeLocation(player, level);
+
+        if (location == null) {
+            callback.accept("");
+            return;
+        }
+
+        BlockPos supportPos = location.supportPos;
+        BlockPos signPos = location.signPos;
+
+        // A standing sign needs support. Both selected positions were verified
+        // as AIR, so this does not overwrite player builds.
+        level.setBlockAndUpdate(supportPos, Blocks.BARRIER.defaultBlockState());
+        level.setBlockAndUpdate(signPos, Blocks.OAK_SIGN.defaultBlockState());
+
+        BlockEntity be = level.getBlockEntity(signPos);
+        if (!(be instanceof SignBlockEntity sign)) {
+            cleanup(level, signPos, supportPos);
+            callback.accept("");
+            return;
+        }
 
         String heading = (prompt == null || prompt.isBlank()) ? "Type answer here" : prompt;
-        // The sign has only four vanilla text rows. We reserve the last row for
-        // the player's answer, matching the requested layout.
         Component[] lines = new Component[] {
             Component.literal(fitHeading(heading)),
             Component.literal("      ↓      "),
@@ -83,24 +100,46 @@ public final class SignInputManager {
             Component.empty()
         };
 
-        SignBlockEntity fakeSign = new SignBlockEntity(pos, signState);
-        // SignBlockEntity#setText marks the block entity as updated. A detached
-        // block entity has no level and crashes the dedicated server there, so
-        // attach the player's current level before setting the virtual text.
-        fakeSign.setLevel(player.level());
-        fakeSign.setAllowedPlayerEditor(player.getUUID());
-        fakeSign.setText(new SignText(lines, lines, DyeColor.BLACK, false), true);
+        sign.setText(new SignText(lines, lines, DyeColor.BLACK, false), true);
+        sign.setAllowedPlayerEditor(player.getUUID());
+        sign.setChanged();
 
-        PENDING.put(player.getUUID(), new PendingInput(pos, callback));
+        PENDING.put(player.getUUID(), new PendingInput(signPos, supportPos, callback));
 
-        player.connection.send(new ClientboundBlockUpdatePacket(pos, signState));
-        player.connection.send(ClientboundBlockEntityDataPacket.create(fakeSign));
-        player.connection.send(new ClientboundOpenSignEditorPacket(pos, true));
+        // Use Minecraft's normal sign-editor path rather than manually sending
+        // an OpenSignEditor packet. Vanilla re-syncs the real SignBlockEntity
+        // and opens the editor in the protocol shape Geyser expects.
+        player.openTextEdit(sign, true);
+    }
+
+    private static SignLocation findSafeLocation(ServerPlayer player, ServerLevel level) {
+        BlockPos base = player.blockPosition();
+
+        // Keep the sign within vanilla's nearby-editor range. Prefer directly
+        // above the player so the temporary support cannot obstruct movement.
+        for (int dy = 3; dy <= 6; dy++) {
+            for (int radius = 0; radius <= 2; radius++) {
+                for (int dx = -radius; dx <= radius; dx++) {
+                    for (int dz = -radius; dz <= radius; dz++) {
+                        if (radius > 0 && Math.abs(dx) != radius && Math.abs(dz) != radius) continue;
+
+                        BlockPos support = base.offset(dx, dy, dz);
+                        BlockPos sign = support.above();
+                        if (level.getBlockState(support).isAir() && level.getBlockState(sign).isAir()) {
+                            return new SignLocation(sign, support);
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private static String fitHeading(String heading) {
         String h = heading.strip();
-        if (h.equalsIgnoreCase("Name this home") || h.equalsIgnoreCase("Rename home") || h.equalsIgnoreCase("Search home icons")) {
+        if (h.equalsIgnoreCase("Name this home")
+            || h.equalsIgnoreCase("Rename home")
+            || h.equalsIgnoreCase("Search home icons")) {
             return "Type answer here";
         }
         return h.length() > 24 ? h.substring(0, 24) : h;
@@ -109,35 +148,45 @@ public final class SignInputManager {
     /** Called from ServerGamePacketListenerImplMixin. Returns true when consumed. */
     public static boolean handleUpdate(ServerPlayer player, ServerboundSignUpdatePacket packet) {
         PendingInput pending = PENDING.get(player.getUUID());
-        if (pending == null || !pending.pos.equals(packet.getPos())) return false;
+        if (pending == null || !pending.signPos.equals(packet.getPos())) return false;
 
         PENDING.remove(player.getUUID());
-        restoreRealBlock(player, pending.pos);
+        cleanup((ServerLevel) player.level(), pending.signPos, pending.supportPos);
 
         String[] lines = packet.getLines();
         String answer = "";
         if (lines != null) {
-            // Preferred input line is the fourth/bottom row. Line three is a
-            // fallback for clients that place the cursor one row higher.
+            // The bottom row is the intended answer field. Row three remains a
+            // fallback in case a client puts the cursor one line higher.
             if (lines.length > 3 && lines[3] != null) answer = lines[3].strip();
             if (answer.isBlank() && lines.length > 2 && lines[2] != null) answer = lines[2].strip();
         }
         if (answer.length() > 32) answer = answer.substring(0, 32);
 
-        final String submitted = answer;
-        pending.callback.accept(submitted);
+        pending.callback.accept(answer);
         return true;
     }
 
-    private static void restoreRealBlock(ServerPlayer player, BlockPos pos) {
-        player.connection.send(new ClientboundBlockUpdatePacket(player.level(), pos));
-        BlockEntity real = player.level().getBlockEntity(pos);
-        if (real != null) {
-            player.connection.send(ClientboundBlockEntityDataPacket.create(real));
+    private static void cancelPending(ServerPlayer player) {
+        PendingInput old = PENDING.remove(player.getUUID());
+        if (old != null) {
+            cleanup((ServerLevel) player.level(), old.signPos, old.supportPos);
         }
     }
 
-    private record PendingInput(BlockPos pos, Consumer<String> callback) {}
+    private static void cleanup(ServerLevel level, BlockPos signPos, BlockPos supportPos) {
+        BlockState signState = level.getBlockState(signPos);
+        if (signState.is(Blocks.OAK_SIGN)) {
+            level.setBlockAndUpdate(signPos, Blocks.AIR.defaultBlockState());
+        }
+        BlockState supportState = level.getBlockState(supportPos);
+        if (supportState.is(Blocks.BARRIER)) {
+            level.setBlockAndUpdate(supportPos, Blocks.AIR.defaultBlockState());
+        }
+    }
+
+    private record PendingInput(BlockPos signPos, BlockPos supportPos, Consumer<String> callback) {}
+    private record SignLocation(BlockPos signPos, BlockPos supportPos) {}
 
     private static final class ScheduledOpen {
         final UUID playerId;
