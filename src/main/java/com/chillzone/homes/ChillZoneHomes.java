@@ -1,5 +1,7 @@
 package com.chillzone.homes;
 
+import com.chillzone.homes.ui.SignInputManager;
+
 import com.chillzone.homes.ui.HomeListMenu;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -27,6 +29,7 @@ public final class ChillZoneHomes implements ModInitializer {
     public static Config config() { return config; }
 
     @Override public void onInitialize() {
+        SignInputManager.init();
         config = Config.load();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> store = HomeStore.load(server));
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> { if (store != null) store.save(); });

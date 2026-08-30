@@ -132,7 +132,12 @@ public class HomeListMenu extends ChestMenu {
         }
 
         final int homeIndex = index;
-        NameInputMenu.open(player, "Home " + (homeIndex + 1), "Name this home", name -> {
+        NameInputMenu.open(player, "", "Type answer here", name -> {
+            if (name == null || name.isBlank()) {
+                player.sendSystemMessage(Component.literal("Home creation cancelled.").withStyle(ChatFormatting.YELLOW));
+                open(player);
+                return;
+            }
             Home h = new Home(name,
                 player.level().dimension().identifier().toString(),
                 player.getX(), player.getY(), player.getZ(),

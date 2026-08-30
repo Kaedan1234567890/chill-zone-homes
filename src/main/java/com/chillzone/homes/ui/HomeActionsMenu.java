@@ -56,8 +56,12 @@ public class HomeActionsMenu extends ChestMenu {
         switch (slotId) {
             case TELEPORT -> HomeTeleport.teleport(player, h);
             case ICON -> IconPickerMenu.open(player, index, 0, "");
-            case RENAME -> NameInputMenu.open(player, h.name(), "Rename home", name -> {
-                ChillZoneHomes.store().setHome(player.getUUID(), index, h.withName(name));
+            case RENAME -> NameInputMenu.open(player, "", "Type answer here", name -> {
+                if (name != null && !name.isBlank()) {
+                    ChillZoneHomes.store().setHome(player.getUUID(), index, h.withName(name));
+                } else {
+                    player.sendSystemMessage(Component.literal("Rename cancelled.").withStyle(ChatFormatting.YELLOW));
+                }
                 HomeActionsMenu.open(player, index);
             });
             case DELETE -> {

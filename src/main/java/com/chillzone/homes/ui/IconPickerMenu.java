@@ -116,7 +116,7 @@ public class IconPickerMenu extends ChestMenu {
         if (slotId == NEXT && (page + 1) * PAGE_SIZE < choices.size()) { open(player, homeIndex, page + 1, query); return; }
         if (slotId == CLEAR && !query.isBlank()) { open(player, homeIndex, 0, ""); return; }
         if (slotId == SEARCH) {
-            NameInputMenu.open(player, query, "Search home icons", text -> open(player, homeIndex, 0, text));
+            NameInputMenu.open(player, "", "Type answer here", text -> open(player, homeIndex, 0, text == null ? "" : text));
             return;
         }
         if (slotId < 0 || slotId >= PAGE_SIZE) return;
