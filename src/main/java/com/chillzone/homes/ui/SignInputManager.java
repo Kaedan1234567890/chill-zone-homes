@@ -104,6 +104,12 @@ public final class SignInputManager {
         sign.setAllowedPlayerEditor(player.getUUID());
         sign.setChanged();
 
+        // setChanged() only marks the block entity dirty for saving. Explicitly
+        // send a block update so the client (and Geyser) receives the prompt
+        // text before the editor opens instead of seeing a blank sign.
+        BlockState currentState = level.getBlockState(signPos);
+        level.sendBlockUpdated(signPos, currentState, currentState, 3);
+
         PENDING.put(player.getUUID(), new PendingInput(signPos, supportPos, callback));
 
         // Use Minecraft's normal sign-editor path rather than manually sending
@@ -154,17 +160,45 @@ public final class SignInputManager {
         cleanup((ServerLevel) player.level(), pending.signPos, pending.supportPos);
 
         String[] lines = packet.getLines();
-        String answer = "";
-        if (lines != null) {
-            // The bottom row is the intended answer field. Row three remains a
-            // fallback in case a client puts the cursor one line higher.
-            if (lines.length > 3 && lines[3] != null) answer = lines[3].strip();
-            if (answer.isBlank() && lines.length > 2 && lines[2] != null) answer = lines[2].strip();
-        }
+        String answer = extractAnswer(lines);
         if (answer.length() > 32) answer = answer.substring(0, 32);
 
         pending.callback.accept(answer);
         return true;
+    }
+
+
+    /**
+     * Accept text typed on either blank input row, and also tolerate clients
+     * (notably protocol translators) that move the cursor or omit the prompt.
+     * Instruction text is ignored, so Create/Rename/Search all share the same
+     * reliable input path.
+     */
+    private static String extractAnswer(String[] lines) {
+        if (lines == null || lines.length == 0) return "";
+
+        // Prefer the intended lower input rows first.
+        int[] preferred = new int[] {3, 2, 0, 1};
+        for (int index : preferred) {
+            if (index >= lines.length || lines[index] == null) continue;
+            String value = lines[index].strip();
+            if (value.isBlank()) continue;
+            if (isInstruction(value)) continue;
+            return value;
+        }
+        return "";
+    }
+
+    private static boolean isInstruction(String value) {
+        String normalized = value.strip()
+            .replace("↓", "")
+            .replace("\u2193", "")
+            .strip();
+        if (normalized.isBlank()) return true;
+        return normalized.equalsIgnoreCase("Type answer here")
+            || normalized.equalsIgnoreCase("Name this home")
+            || normalized.equalsIgnoreCase("Rename home")
+            || normalized.equalsIgnoreCase("Search home icons");
     }
 
     private static void cancelPending(ServerPlayer player) {

@@ -1,3 +1,18 @@
+# Chill Zone Homes 0.3.2 Alpha Fix 4
+
+Fix 4 corrects the sign submission pipeline for Java and Bedrock/Geyser:
+
+- lets vanilla fully process `handleSignUpdate` before Chill Zone Homes reads the submitted text;
+- no longer cancels the packet before Minecraft's thread handoff/validation;
+- explicitly syncs the sign block entity before opening the editor so prompt text is visible;
+- accepts player input from either lower line (and safely tolerates clients that move the cursor);
+- ignores the built-in instruction/arrow text;
+- applies to Create Home, Rename Home, and Icon Search through the shared sign input manager.
+
+Existing home data, GUI layout, icons, permissions, and home limits are unchanged.
+
+---
+
 # Chill Zone Homes
 
 Server-side Fabric homes mod for Chill Zone SMP.
