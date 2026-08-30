@@ -34,7 +34,6 @@ import java.util.function.Consumer;
 public final class SignInputManager {
     private static final Map<UUID, PendingInput> PENDING = new HashMap<>();
     private static final List<ScheduledOpen> OPEN_QUEUE = new ArrayList<>();
-    private static final List<ScheduledEditorOpen> EDITOR_QUEUE = new ArrayList<>();
     private static boolean initialized;
 
     private SignInputManager() {}
@@ -52,32 +51,7 @@ public final class SignInputManager {
                     it.remove();
                     ServerPlayer player = server.getPlayerList().getPlayer(scheduled.playerId);
                     if (player != null && player.connection != null) {
-                        prepareSign(player, scheduled.prompt, scheduled.callback);
-                    }
-                }
-            }
-
-            // Geyser/Bedrock needs time to receive the real block + block-entity
-            // data before the Java OpenSignEditor packet is translated. Opening
-            // in the same tick races Bedrock's block cache and the editor closes
-            // immediately. Java tolerates the delay, so one path works for both.
-            Iterator<ScheduledEditorOpen> editorIt = EDITOR_QUEUE.iterator();
-            while (editorIt.hasNext()) {
-                ScheduledEditorOpen scheduled = editorIt.next();
-                scheduled.ticks--;
-                if (scheduled.ticks <= 0) {
-                    editorIt.remove();
-                    ServerPlayer player = server.getPlayerList().getPlayer(scheduled.playerId);
-                    if (player != null && player.connection != null && player.level() instanceof ServerLevel level) {
-                        BlockEntity be = level.getBlockEntity(scheduled.signPos);
-                        PendingInput pending = PENDING.get(player.getUUID());
-                        if (be instanceof SignBlockEntity sign && pending != null && pending.signPos.equals(scheduled.signPos)) {
-                            sign.setAllowedPlayerEditor(player.getUUID());
-                            sign.setChanged();
-                            BlockState state = level.getBlockState(scheduled.signPos);
-                            level.sendBlockUpdated(scheduled.signPos, state, state, 3);
-                            player.openTextEdit(sign, true);
-                        }
+                        openNow(player, scheduled.prompt, scheduled.callback);
                     }
                 }
             }
@@ -91,11 +65,10 @@ public final class SignInputManager {
         player.closeContainer();
         cancelPending(player);
         OPEN_QUEUE.removeIf(s -> s.playerId.equals(player.getUUID()));
-        EDITOR_QUEUE.removeIf(s -> s.playerId.equals(player.getUUID()));
         OPEN_QUEUE.add(new ScheduledOpen(player.getUUID(), prompt, callback, 4));
     }
 
-    private static void prepareSign(ServerPlayer player, String prompt, Consumer<String> callback) {
+    private static void openNow(ServerPlayer player, String prompt, Consumer<String> callback) {
         ServerLevel level = (ServerLevel) player.level();
         SignLocation location = findSafeLocation(player, level);
 
@@ -139,13 +112,10 @@ public final class SignInputManager {
 
         PENDING.put(player.getUUID(), new PendingInput(signPos, supportPos, callback));
 
-        // Do NOT open the editor in the same tick that the sign is created.
-        // Java can handle that race, but Geyser/Bedrock may translate the open
-        // packet before its Bedrock-side block cache knows this is a sign and
-        // immediately closes the UI. Give the translated client 12 ticks
-        // (~0.6 s) to receive the sign and its block-entity data first.
-        EDITOR_QUEUE.removeIf(q -> q.playerId.equals(player.getUUID()));
-        EDITOR_QUEUE.add(new ScheduledEditorOpen(player.getUUID(), signPos, 12));
+        // Use Minecraft's normal sign-editor path rather than manually sending
+        // an OpenSignEditor packet. Vanilla re-syncs the real SignBlockEntity
+        // and opens the editor in the protocol shape Geyser expects.
+        player.openTextEdit(sign, true);
     }
 
     private static SignLocation findSafeLocation(ServerPlayer player, ServerLevel level) {
@@ -232,7 +202,6 @@ public final class SignInputManager {
     }
 
     private static void cancelPending(ServerPlayer player) {
-        EDITOR_QUEUE.removeIf(s -> s.playerId.equals(player.getUUID()));
         PendingInput old = PENDING.remove(player.getUUID());
         if (old != null) {
             cleanup((ServerLevel) player.level(), old.signPos, old.supportPos);
@@ -252,18 +221,6 @@ public final class SignInputManager {
 
     private record PendingInput(BlockPos signPos, BlockPos supportPos, Consumer<String> callback) {}
     private record SignLocation(BlockPos signPos, BlockPos supportPos) {}
-
-    private static final class ScheduledEditorOpen {
-        final UUID playerId;
-        final BlockPos signPos;
-        int ticks;
-
-        ScheduledEditorOpen(UUID playerId, BlockPos signPos, int ticks) {
-            this.playerId = playerId;
-            this.signPos = signPos;
-            this.ticks = ticks;
-        }
-    }
 
     private static final class ScheduledOpen {
         final UUID playerId;

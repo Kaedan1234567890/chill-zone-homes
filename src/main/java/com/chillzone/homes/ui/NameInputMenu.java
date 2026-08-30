@@ -5,11 +5,11 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.function.Consumer;
 
 /**
- * Cross-play text input used for home names and icon searches.
+ * Cross-play text input.
  *
- * 0.3.2 intentionally uses Minecraft's vanilla sign editor instead of an anvil,
- * because Geyser/Bedrock can interact with the sign editor reliably while the
- * custom anvil rename field is not translated correctly.
+ * Java keeps the known-good Fix 4 vanilla sign editor path. Bedrock/Floodgate
+ * uses a native Bedrock CustomForm text box instead of asking Geyser to
+ * translate Java's sign editor, which is unreliable and can close immediately.
  */
 public final class NameInputMenu {
     private NameInputMenu() {}
@@ -19,8 +19,12 @@ public final class NameInputMenu {
     }
 
     public static void open(ServerPlayer player, String initial, String title, Consumer<String> callback) {
-        // "initial" is deliberately not inserted into the editable line.
-        // The bottom line stays empty so Java and Bedrock players type a fresh answer.
+        if (BedrockInputManager.isBedrock(player)) {
+            BedrockInputManager.open(player, title, initial, callback);
+            return;
+        }
+
+        // Java path intentionally remains identical to Fix 4.
         SignInputManager.open(player, title, callback);
     }
 }
