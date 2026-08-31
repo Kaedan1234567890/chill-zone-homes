@@ -1,6 +1,7 @@
 package com.chillzone.homes;
 
 import com.chillzone.homes.ui.SignInputManager;
+import com.chillzone.homes.ui.BedrockInputManager;
 
 import com.chillzone.homes.ui.HomeListMenu;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -30,12 +31,14 @@ public final class ChillZoneHomes implements ModInitializer {
 
     @Override public void onInitialize() {
         SignInputManager.init();
+        BedrockInputManager.init();
         config = Config.load();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> store = HomeStore.load(server));
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> { if (store != null) store.save(); });
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             dispatcher.register(Commands.literal("home")
+                .requires(LuckPermsPermissions::canUseHome)
                 .executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     HomeListMenu.open(player);
@@ -66,8 +69,8 @@ public final class ChillZoneHomes implements ModInitializer {
             );
 
             dispatcher.register(Commands.literal("homes")
+                .requires(LuckPermsPermissions::canManageLimits)
                 .then(Commands.literal("limit")
-                    .requires(LuckPermsPermissions::canManageLimits)
                     .then(Commands.argument("player", EntityArgument.player())
                         .then(Commands.argument("amount", IntegerArgumentType.integer(1, 24))
                             .executes(ctx -> {

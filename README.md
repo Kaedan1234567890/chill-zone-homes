@@ -1,13 +1,19 @@
-# Chill Zone Homes 0.3.2 Alpha Fix 7
+# Chill Zone Homes 0.3.2 Fix 8
 
-Fix 7 separates Java and Bedrock text input so a Bedrock workaround can no longer break the working Java sign editor.
+Fix 8 focuses on reliable home access for every rank and both client editions.
 
-- Java: restored exactly to the known-good Fix 4 sign flow.
-- Bedrock/Floodgate: uses a native Bedrock CustomForm input field through Floodgate/Cumulus.
-- Create Home, Rename Home, and Icon Search all route through the same cross-play input manager.
-- Bedrock no longer depends on Geyser translating Java's Open Sign Editor packet.
-- Closing/cancelling returns an empty result safely.
-- Text is capped at 32 characters.
-- Existing homes, permissions, icons, limits, and stored data are unchanged.
+- Adds LuckPerms node `chillzonehomes.command.home` to control `/home`.
+- Hides the staff-only `/homes` command tree from players without `chillzonehomes.command.limit`.
+- Java text entry uses the stable vanilla anvil field so non-OP/member players are not blocked by temporary sign editing.
+- Bedrock text entry stays native through Floodgate/Cumulus, with a short delayed open and one retry to avoid menu-close races.
+- Existing homes, limits, icons, teleports, and saved data are unchanged.
 
-This build has a compile-only Floodgate API dependency; Floodgate remains provided by the server at runtime.
+Recommended LuckPerms setup:
+
+```
+/lp group member permission set chillzonehomes.command.home true
+/lp group member permission set chillzonehomes.command.limit false
+/lp group mod permission set chillzonehomes.command.limit false
+/lp group admin permission set chillzonehomes.command.limit false
+/lp group owner permission set chillzonehomes.command.limit true
+```

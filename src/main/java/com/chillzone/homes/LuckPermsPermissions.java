@@ -10,9 +10,17 @@ import java.lang.reflect.Method;
  * Console is always allowed. Player checks use LuckPerms cached permission data.
  */
 public final class LuckPermsPermissions {
+    public static final String HOME_PERMISSION = "chillzonehomes.command.home";
     public static final String LIMIT_PERMISSION = "chillzonehomes.command.limit";
 
     private LuckPermsPermissions() {}
+
+    public static boolean canUseHome(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            return true;
+        }
+        return hasPermission(player, HOME_PERMISSION);
+    }
 
     public static boolean canManageLimits(CommandSourceStack source) {
         if (!(source.getEntity() instanceof ServerPlayer player)) {
