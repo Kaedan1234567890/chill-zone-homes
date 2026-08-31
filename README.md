@@ -1,6 +1,6 @@
-# Chill Zone Homes 0.3.2 Alpha Fix 6
+# Chill Zone Homes 0.3.2 Alpha Fix 7
 
-Fix 6 separates Java and Bedrock text input so a Bedrock workaround can no longer break the working Java sign editor.
+Fix 7 separates Java and Bedrock text input so a Bedrock workaround can no longer break the working Java sign editor.
 
 - Java: restored exactly to the known-good Fix 4 sign flow.
 - Bedrock/Floodgate: uses a native Bedrock CustomForm input field through Floodgate/Cumulus.

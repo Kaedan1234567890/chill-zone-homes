@@ -41,21 +41,21 @@ public final class BedrockInputManager {
                     String answer = value == null ? "" : value.toString().strip();
                     if (answer.length() > 32) answer = answer.substring(0, 32);
                     String finalAnswer = answer;
-                    player.getServer().execute(() -> callback.accept(finalAnswer));
+                    player.level().getServer().execute(() -> callback.accept(finalAnswer));
                 })
                 .closedOrInvalidResultHandler(() ->
-                    player.getServer().execute(() -> callback.accept(""))
+                    player.level().getServer().execute(() -> callback.accept(""))
                 );
 
             boolean sent = api.sendForm(player.getUUID(), form);
             if (!sent) {
-                player.getServer().execute(() -> callback.accept(""));
+                player.level().getServer().execute(() -> callback.accept(""));
             }
         } catch (Throwable throwable) {
             // Do not crash the server if Floodgate's API changes or is unavailable.
             // Falling back to an empty/cancel result is safer than reopening the
             // known-broken translated sign UI for a Bedrock player.
-            player.getServer().execute(() -> callback.accept(""));
+            player.level().getServer().execute(() -> callback.accept(""));
         }
     }
 
