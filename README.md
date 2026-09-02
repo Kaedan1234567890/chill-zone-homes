@@ -1,19 +1,29 @@
-# Chill Zone Homes 0.3.2 Fix 8
+# Chill Zone Vanish 0.1.0-alpha
 
-Fix 8 focuses on reliable home access for every rank and both client editions.
+Minecraft 26.2 / Fabric / server-side.
 
-- Adds LuckPerms node `chillzonehomes.command.home` to control `/home`.
-- Hides the staff-only `/homes` command tree from players without `chillzonehomes.command.limit`.
-- Java text entry uses the stable vanilla anvil field so non-OP/member players are not blocked by temporary sign editing.
-- Bedrock text entry stays native through Floodgate/Cumulus, with a short delayed open and one retry to avoid menu-close races.
-- Existing homes, limits, icons, teleports, and saved data are unchanged.
+## Command
+`/vanish`
 
-Recommended LuckPerms setup:
+## LuckPerms permission
+`chillzonevanish.command.vanish`
 
+Recommended:
 ```
-/lp group member permission set chillzonehomes.command.home true
-/lp group member permission set chillzonehomes.command.limit false
-/lp group mod permission set chillzonehomes.command.limit false
-/lp group admin permission set chillzonehomes.command.limit false
-/lp group owner permission set chillzonehomes.command.limit true
+/lp group owner permission set chillzonevanish.command.vanish true
+/lp group admin permission set chillzonevanish.command.vanish false
+/lp group mod permission set chillzonevanish.command.vanish false
+/lp group member permission set chillzonevanish.command.vanish false
 ```
+
+## Alpha behaviour
+- Fake LuckPerms-prefix leave message on vanish
+- Fake LuckPerms-prefix join message on unvanish
+- Removes vanished player from TAB for other players
+- Removes vanished player entity from other clients
+- Re-applies hiding once per second
+- New players do not see already-vanished players
+- Simple Voice Chat is intentionally untouched
+
+## Test first
+This is an alpha. Test with a second Java account/friend before relying on it.
