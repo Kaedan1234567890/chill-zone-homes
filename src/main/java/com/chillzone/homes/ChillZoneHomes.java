@@ -9,6 +9,8 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -25,16 +27,38 @@ public final class ChillZoneHomes implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static HomeStore store;
     private static Config config;
+    private static ShardStore shards;
+    private static long ticks = 0;
 
     public static HomeStore store() { return store; }
     public static Config config() { return config; }
+    public static ShardStore shards() { return shards; }
 
     @Override public void onInitialize() {
         SignInputManager.init();
         BedrockInputManager.init();
         config = Config.load();
+        shards = ShardStore.load();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> store = HomeStore.load(server));
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> { if (store != null) store.save(); });
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            if (store != null) store.save();
+            if (shards != null) shards.save();
+        });
+
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
+            server.execute(() -> ShardSidebar.update(handler.player, shards.shards(handler.player.getUUID()))));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> ShardSidebar.forget(handler.player.getUUID()));
+
+        // One Shard for every full minute the player is online, including AFK time.
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            ticks++;
+            if (ticks % 1200L != 0L) return;
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                shards.addShard(player.getUUID());
+                ShardSidebar.update(player, shards.shards(player.getUUID()));
+            }
+            shards.save();
+        });
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             dispatcher.register(Commands.literal("home")
@@ -72,7 +96,7 @@ public final class ChillZoneHomes implements ModInitializer {
                 .requires(LuckPermsPermissions::canManageLimits)
                 .then(Commands.literal("limit")
                     .then(Commands.argument("player", EntityArgument.player())
-                        .then(Commands.argument("amount", IntegerArgumentType.integer(1, 24))
+                        .then(Commands.argument("amount", IntegerArgumentType.integer(1, 28))
                             .executes(ctx -> {
                                 ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                                 int amount = IntegerArgumentType.getInteger(ctx, "amount");

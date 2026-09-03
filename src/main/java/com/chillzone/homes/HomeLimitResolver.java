@@ -12,7 +12,7 @@ public final class HomeLimitResolver {
     private HomeLimitResolver() {}
 
     public static int resolve(ServerPlayer player) {
-        int fallback = ChillZoneHomes.config().defaultHomes;
+        int fallback = Math.max(ChillZoneHomes.config().defaultHomes, ChillZoneHomes.shards().purchasedHomeLimit(player.getUUID()));
         try {
             Class<?> provider = Class.forName("net.luckperms.api.LuckPermsProvider");
             Object lp = provider.getMethod("get").invoke(null);
@@ -25,7 +25,7 @@ public final class HomeLimitResolver {
             Object raw = getMetaValue.invoke(metaData, ChillZoneHomes.config().luckPermsMetaKey);
             if (raw == null) return fallback;
             int parsed = Integer.parseInt(raw.toString());
-            return Math.max(1, Math.min(parsed, ChillZoneHomes.config().maximumVisibleSlots));
+            return Math.max(fallback, Math.max(1, Math.min(parsed, ChillZoneHomes.config().maximumVisibleSlots)));
         } catch (ClassNotFoundException e) {
             return fallback;
         } catch (Exception e) {

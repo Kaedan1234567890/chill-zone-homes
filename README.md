@@ -1,32 +1,16 @@
-# Chill Zone Vanish 0.1.0-alpha
+# Chill Zone Homes 0.4.0-alpha-shards
 
-Minecraft 26.2 / Fabric / server-side.
+Minecraft 26.2 Fabric server-side homes + Shards update.
 
-## Command
-`/vanish`
+## Shards
+- 1 Shard per full minute online (AFK time counts).
+- Balance persists in `config/chill-zone-shards.json`.
+- Clean per-player sidebar: player name + Shards.
 
-## LuckPerms permission
-`chillzonevanish.command.vanish`
-
-Recommended:
-```
-/lp group owner permission set chillzonevanish.command.vanish true
-/lp group admin permission set chillzonevanish.command.vanish false
-/lp group mod permission set chillzonevanish.command.vanish false
-/lp group member permission set chillzonevanish.command.vanish false
-```
-
-## Alpha behaviour
-- Fake LuckPerms-prefix leave message on vanish
-- Fake LuckPerms-prefix join message on unvanish
-- Removes vanished player from TAB for other players
-- Removes vanished player entity from other clients
-- Re-applies hiding once per second
-- New players do not see already-vanished players
-- Simple Voice Chat is intentionally untouched
-
-## Test first
-This is an alpha. Test with a second Java account/friend before relying on it.
-
-## Fix 2
-Minecraft 26.2 is unobfuscated, so this project intentionally does not declare Mojang/Yarn mappings. GitHub Actions uses Gradle 9.5.1, matching Fabric's 26.2 guidance.
+## Home progression
+- Homes 1-3 are free/default.
+- Home 4 costs 100 Shards.
+- Every next home costs 50 more, through Home 28 (1,300 Shards).
+- Click the next locked barrier in `/home` to buy it permanently.
+- Staff `/homes limit <player> <amount>` remains a free administrative override and now accepts 1-28.
+- Existing home data is preserved.

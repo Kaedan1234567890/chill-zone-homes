@@ -19,7 +19,7 @@ import java.util.Locale;
 /** Exact 6x9 Chill Zone homes layout approved for 0.3.0. */
 public class HomeListMenu extends ChestMenu {
     private static final int ROWS = 6;
-    // Four inner rows, seven positions each. Only the first 24 are usable; the final four remain locked decoration.
+    // Four inner rows, seven positions each: all 28 positions are usable homes.
     private static final int[] HOME_SLOTS = {
         10,11,12,13,14,15,16,
         19,20,21,22,23,24,25,
@@ -51,18 +51,17 @@ public class HomeListMenu extends ChestMenu {
         for (int i = 0; i < ROWS * 9; i++) getContainer().setItem(i, filler.copy());
 
         int limit = HomeLimitResolver.resolve(player);
-        int max = Math.min(24, ChillZoneHomes.config().maximumVisibleSlots);
+        int max = Math.min(28, ChillZoneHomes.config().maximumVisibleSlots);
         List<Home> homes = ChillZoneHomes.store().getHomes(player.getUUID());
 
         for (int i = 0; i < HOME_SLOTS.length; i++) {
             ItemStack button;
-            // The exact visual template contains 28 inner positions, but Chill Zone supports 24 total homes.
             if (i >= max) {
-                button = lockedButton(limit);
+                button = lockedButton(i, limit);
             } else {
                 Home home = i < homes.size() ? homes.get(i) : null;
                 if (i >= limit) {
-                    button = lockedButton(limit);
+                    button = lockedButton(i, limit);
                 } else if (home == null) {
                     button = Ui.button(Ui.item("red_bed"),
                         Ui.name("New Home", ChatFormatting.GREEN, ChatFormatting.BOLD),
@@ -84,10 +83,20 @@ public class HomeListMenu extends ChestMenu {
             Ui.lore("Your current home allowance.")));
     }
 
-    private ItemStack lockedButton(int limit) {
+    private ItemStack lockedButton(int index, int limit) {
+        int homeNumber = index + 1;
+        if (homeNumber >= 4 && homeNumber <= 28 && index == limit) {
+            int cost = ShardStore.costForHome(homeNumber);
+            int balance = ChillZoneHomes.shards().shards(player.getUUID());
+            return Ui.button(Ui.item("barrier"),
+                Ui.name("Locked — Home " + homeNumber, ChatFormatting.RED, ChatFormatting.BOLD),
+                Ui.lore("Cost: " + cost + " Shards"),
+                Ui.lore("Your Shards: " + balance),
+                Ui.lore("Click to permanently unlock."));
+        }
         return Ui.button(Ui.item("barrier"),
             Ui.name("Locked", ChatFormatting.RED, ChatFormatting.BOLD),
-            Ui.lore("This home slot is locked."),
+            Ui.lore("Unlock the previous home slot first."),
             Ui.lore("Your limit: " + limit + " homes."));
     }
 
@@ -114,10 +123,29 @@ public class HomeListMenu extends ChestMenu {
         }
         if (index < 0) return;
 
-        int max = Math.min(24, ChillZoneHomes.config().maximumVisibleSlots);
+        int max = Math.min(28, ChillZoneHomes.config().maximumVisibleSlots);
         int limit = HomeLimitResolver.resolve(player);
-        if (index >= max || index >= limit) {
+        if (index >= max) {
             player.sendSystemMessage(Component.literal("That home slot is locked.").withStyle(ChatFormatting.RED));
+            return;
+        }
+        if (index >= limit) {
+            int homeNumber = index + 1;
+            if (index == limit && homeNumber >= 4 && homeNumber <= 28) {
+                int cost = ShardStore.costForHome(homeNumber);
+                int balance = ChillZoneHomes.shards().shards(player.getUUID());
+                if (balance < cost) {
+                    player.sendSystemMessage(Component.literal("You need " + cost + " Shards to unlock Home " + homeNumber + ". You have " + balance + ".").withStyle(ChatFormatting.RED));
+                    return;
+                }
+                if (ChillZoneHomes.shards().purchaseNextHome(player.getUUID(), homeNumber)) {
+                    player.sendSystemMessage(Component.literal("Home " + homeNumber + " unlocked for " + cost + " Shards!").withStyle(ChatFormatting.GREEN));
+                    ShardSidebar.update(player, ChillZoneHomes.shards().shards(player.getUUID()));
+                    refresh();
+                }
+                return;
+            }
+            player.sendSystemMessage(Component.literal("Unlock the previous home slot first.").withStyle(ChatFormatting.YELLOW));
             return;
         }
 
