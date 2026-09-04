@@ -29,3 +29,9 @@ Permission: `chillzonehomes.command.shardsadmin`
 - `/shards balance <player>`
 
 These commands are intended for Owner/Admin testing and management. The target player must be online.
+
+## Fix 4 — staff home-limit override
+- `/homes limit <player> <amount>` now always overrides shard-purchased limits, even when the staff limit is lower.
+- Example: if a player purchased 8 homes and staff sets `/homes limit Player 4`, the player is limited to 4 homes.
+- `/homes limit <player> reset` removes the staff override, allowing the player's normal shard-purchased limit to apply again.
+- No existing homes, shard balances, or purchased-home progress are deleted.
