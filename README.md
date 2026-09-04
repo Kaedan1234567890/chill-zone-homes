@@ -14,3 +14,8 @@ Minecraft 26.2 Fabric server-side homes + Shards update.
 - Click the next locked barrier in `/home` to buy it permanently.
 - Staff `/homes limit <player> <amount>` remains a free administrative override and now accepts 1-28.
 - Existing home data is preserved.
+
+## Fix 2 build cleanup
+- Restores the MIT `LICENSE` file from the known-good Homes source.
+- Explicitly excludes the unrelated `com/chillzone/vanish/**` package if an old copy is still sitting in the GitHub repository.
+- This prevents stale Vanish source files from breaking the Homes build.
