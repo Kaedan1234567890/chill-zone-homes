@@ -92,6 +92,60 @@ public final class ChillZoneHomes implements ModInitializer {
                     }))
             );
 
+
+            dispatcher.register(Commands.literal("shards")
+                .requires(LuckPermsPermissions::canManageShards)
+                .then(Commands.literal("give")
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("amount", IntegerArgumentType.integer(1))
+                            .executes(ctx -> {
+                                ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                                int balance = shards().addShards(target.getUUID(), amount);
+                                ShardSidebar.update(target, balance);
+                                ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Gave " + amount + " Shards to " + target.getScoreboardName() + ". New balance: " + balance
+                                ).withStyle(ChatFormatting.GREEN), false);
+                                return 1;
+                            }))))
+                .then(Commands.literal("set")
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("amount", IntegerArgumentType.integer(0))
+                            .executes(ctx -> {
+                                ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                                int balance = shards().setShards(target.getUUID(), amount);
+                                ShardSidebar.update(target, balance);
+                                ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Set " + target.getScoreboardName() + "'s Shards to " + balance + "."
+                                ).withStyle(ChatFormatting.GREEN), false);
+                                return 1;
+                            }))))
+                .then(Commands.literal("take")
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("amount", IntegerArgumentType.integer(1))
+                            .executes(ctx -> {
+                                ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                                int balance = shards().takeShards(target.getUUID(), amount);
+                                ShardSidebar.update(target, balance);
+                                ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Took " + amount + " Shards from " + target.getScoreboardName() + ". New balance: " + balance
+                                ).withStyle(ChatFormatting.GREEN), false);
+                                return 1;
+                            }))))
+                .then(Commands.literal("balance")
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .executes(ctx -> {
+                            ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                            int balance = shards().shards(target.getUUID());
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                target.getScoreboardName() + " has " + balance + " Shards."
+                            ).withStyle(ChatFormatting.AQUA), false);
+                            return 1;
+                        })))
+            );
+
             dispatcher.register(Commands.literal("homes")
                 .requires(LuckPermsPermissions::canManageLimits)
                 .then(Commands.literal("limit")

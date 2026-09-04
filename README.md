@@ -19,3 +19,13 @@ Minecraft 26.2 Fabric server-side homes + Shards update.
 - Restores the MIT `LICENSE` file from the known-good Homes source.
 - Explicitly excludes the unrelated `com/chillzone/vanish/**` package if an old copy is still sitting in the GitHub repository.
 - This prevents stale Vanish source files from breaking the Homes build.
+
+## Shard admin commands
+Permission: `chillzonehomes.command.shardsadmin`
+
+- `/shards give <player> <amount>`
+- `/shards set <player> <amount>`
+- `/shards take <player> <amount>`
+- `/shards balance <player>`
+
+These commands are intended for Owner/Admin testing and management. The target player must be online.

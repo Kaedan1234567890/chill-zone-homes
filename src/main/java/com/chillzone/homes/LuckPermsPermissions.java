@@ -12,6 +12,7 @@ import java.lang.reflect.Method;
 public final class LuckPermsPermissions {
     public static final String HOME_PERMISSION = "chillzonehomes.command.home";
     public static final String LIMIT_PERMISSION = "chillzonehomes.command.limit";
+    public static final String SHARDS_ADMIN_PERMISSION = "chillzonehomes.command.shardsadmin";
 
     private LuckPermsPermissions() {}
 
@@ -27,6 +28,13 @@ public final class LuckPermsPermissions {
             return true; // console / command blocks / server source
         }
         return hasPermission(player, LIMIT_PERMISSION);
+    }
+
+    public static boolean canManageShards(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            return true;
+        }
+        return hasPermission(player, SHARDS_ADMIN_PERMISSION);
     }
 
     public static boolean hasPermission(ServerPlayer player, String permission) {

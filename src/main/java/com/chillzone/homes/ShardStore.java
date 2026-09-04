@@ -60,6 +60,27 @@ public final class ShardStore {
         record(id).shards++;
     }
 
+    public int addShards(UUID id, int amount) {
+        Record r = record(id);
+        r.shards = Math.max(0, r.shards + Math.max(0, amount));
+        save();
+        return r.shards;
+    }
+
+    public int setShards(UUID id, int amount) {
+        Record r = record(id);
+        r.shards = Math.max(0, amount);
+        save();
+        return r.shards;
+    }
+
+    public int takeShards(UUID id, int amount) {
+        Record r = record(id);
+        r.shards = Math.max(0, r.shards - Math.max(0, amount));
+        save();
+        return r.shards;
+    }
+
     public boolean purchaseNextHome(UUID id, int nextHomeNumber) {
         Record r = record(id);
         if (nextHomeNumber < 4 || nextHomeNumber > 28) return false;
