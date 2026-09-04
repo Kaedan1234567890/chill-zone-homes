@@ -4,7 +4,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetDisplayObjectivePacket;
 import net.minecraft.network.protocol.game.ClientboundSetObjectivePacket;
 import net.minecraft.network.protocol.game.ClientboundSetScorePacket;
-import net.minecraft.network.protocol.game.ObjectiveAction;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
@@ -36,7 +35,7 @@ public final class ShardSidebar {
         );
 
         if (REGISTERED.add(player.getUUID())) {
-            player.connection.send(new ClientboundSetObjectivePacket(objective, ObjectiveAction.REGISTER));
+            player.connection.send(new ClientboundSetObjectivePacket(objective, 0));
             player.connection.send(new ClientboundSetDisplayObjectivePacket(DisplaySlot.SIDEBAR, objective));
         }
         player.connection.send(new ClientboundSetScorePacket(
