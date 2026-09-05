@@ -236,13 +236,16 @@ public final class ChillZoneHomes implements ModInitializer {
                             return 1;
                         }))));
 
-            // /bal opens the Shard leaderboard. /bal <name> privately reports one player's balance.
+            // /bal privately reports your own Shard balance. /bal <name> reports another player's balance.
             // Online names are suggested automatically, while typed offline names are resolved from saved shard data.
             dispatcher.register(Commands.literal("bal")
                 .executes(ctx -> {
                     ServerPlayer viewer = ctx.getSource().getPlayerOrException();
                     shards().rememberPlayer(viewer.getUUID(), viewer.getScoreboardName());
-                    BalanceMenu.open(viewer);
+                    int balance = shards().shards(viewer.getUUID());
+                    viewer.sendSystemMessage(Component.literal(
+                        "You have " + balance + " Shards."
+                    ).withStyle(ChatFormatting.AQUA));
                     return 1;
                 })
                 .then(Commands.argument("playerName", StringArgumentType.word())
@@ -289,6 +292,16 @@ public final class ChillZoneHomes implements ModInitializer {
                         ).withStyle(ChatFormatting.AQUA), false);
                         return 1;
                     }))
+            );
+
+            // /baltop opens the paginated Shard leaderboard GUI.
+            dispatcher.register(Commands.literal("baltop")
+                .executes(ctx -> {
+                    ServerPlayer viewer = ctx.getSource().getPlayerOrException();
+                    shards().rememberPlayer(viewer.getUUID(), viewer.getScoreboardName());
+                    BalanceMenu.open(viewer);
+                    return 1;
+                })
             );
 
             dispatcher.register(Commands.literal("homes")

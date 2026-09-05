@@ -1,4 +1,4 @@
-# Chill Zone Homes 0.4.0-alpha-shards-fix8-bal
+# Chill Zone Homes 0.4.0-alpha-shards-fix9-baltop
 
 Minecraft 26.2 Fabric server-side homes + Shards update.
 
@@ -61,3 +61,9 @@ Both commands do the same thing. Payments fail if the sender does not have enoug
 - `/bal <playerName>` privately reports that player's saved Shard balance in chat.
 - Online player names autocomplete. Offline names can still be typed manually after the mod has seen that player at least once.
 - Existing `chill-zone-shards.json` data remains compatible; usernames are remembered alongside existing UUID records as players join.
+
+
+## Balance commands (Fix 9)
+- `/bal` — privately shows your own Shard balance in chat.
+- `/bal <player>` — privately shows that player's Shard balance. Online player names autocomplete; saved offline names can still be typed manually.
+- `/baltop` — opens the paginated Shard leaderboard GUI, richest to poorest, 28 players per page.
