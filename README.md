@@ -1,4 +1,4 @@
-# Chill Zone Homes 0.4.0-alpha-shards-fix7-pay
+# Chill Zone Homes 0.4.0-alpha-shards-fix8-bal
 
 Minecraft 26.2 Fabric server-side homes + Shards update.
 
@@ -50,3 +50,14 @@ Both commands do the same thing. Payments fail if the sender does not have enoug
 - Corrected the command-registration closing parenthesis for `/pay`.
 - `/pay <player> <amount>` and `/shardpay <player> <amount>` remain unchanged.
 - Player arguments continue to use Minecraft player-name suggestions/autocomplete.
+
+
+## Fix 8 — `/bal` Shard leaderboard
+- `/bal` opens a 6x9 Shard-balance leaderboard.
+- Up to 28 players appear per page, richest at the top-left and lowest balance at the bottom-right.
+- Player entries use player-head icons; hovering shows the saved player name, Shard balance, and rank.
+- A next-page arrow appears in the bottom-right only when more than 28 players exist.
+- On page 2+, a previous-page arrow appears in the bottom-left.
+- `/bal <playerName>` privately reports that player's saved Shard balance in chat.
+- Online player names autocomplete. Offline names can still be typed manually after the mod has seen that player at least once.
+- Existing `chill-zone-shards.json` data remains compatible; usernames are remembered alongside existing UUID records as players join.

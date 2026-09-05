@@ -4,6 +4,7 @@ import com.chillzone.homes.ui.SignInputManager;
 import com.chillzone.homes.ui.BedrockInputManager;
 
 import com.chillzone.homes.ui.HomeListMenu;
+import com.chillzone.homes.ui.BalanceMenu;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.ModInitializer;
@@ -46,7 +47,10 @@ public final class ChillZoneHomes implements ModInitializer {
         });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-            server.execute(() -> ShardSidebar.update(handler.player, shards.shards(handler.player.getUUID()))));
+            server.execute(() -> {
+                shards.rememberPlayer(handler.player.getUUID(), handler.player.getScoreboardName());
+                ShardSidebar.update(handler.player, shards.shards(handler.player.getUUID()));
+            }));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> ShardSidebar.forget(handler.player.getUUID()));
 
         // One Shard for every full two minutes the player is online, including AFK time.
@@ -154,6 +158,8 @@ public final class ChillZoneHomes implements ModInitializer {
                             ServerPlayer sender = ctx.getSource().getPlayerOrException();
                             ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                             int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                            shards().rememberPlayer(sender.getUUID(), sender.getScoreboardName());
+                            shards().rememberPlayer(target.getUUID(), target.getScoreboardName());
 
                             if (sender.getUUID().equals(target.getUUID())) {
                                 sender.sendSystemMessage(Component.literal("You cannot pay Shards to yourself.").withStyle(ChatFormatting.RED));
@@ -195,6 +201,8 @@ public final class ChillZoneHomes implements ModInitializer {
                             ServerPlayer sender = ctx.getSource().getPlayerOrException();
                             ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                             int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                            shards().rememberPlayer(sender.getUUID(), sender.getScoreboardName());
+                            shards().rememberPlayer(target.getUUID(), target.getScoreboardName());
 
                             if (sender.getUUID().equals(target.getUUID())) {
                                 sender.sendSystemMessage(Component.literal("You cannot pay Shards to yourself.").withStyle(ChatFormatting.RED));
@@ -227,6 +235,61 @@ public final class ChillZoneHomes implements ModInitializer {
                             ).withStyle(ChatFormatting.AQUA));
                             return 1;
                         }))));
+
+            // /bal opens the Shard leaderboard. /bal <name> privately reports one player's balance.
+            // Online names are suggested automatically, while typed offline names are resolved from saved shard data.
+            dispatcher.register(Commands.literal("bal")
+                .executes(ctx -> {
+                    ServerPlayer viewer = ctx.getSource().getPlayerOrException();
+                    shards().rememberPlayer(viewer.getUUID(), viewer.getScoreboardName());
+                    BalanceMenu.open(viewer);
+                    return 1;
+                })
+                .then(Commands.argument("playerName", StringArgumentType.word())
+                    .suggests((ctx, builder) -> {
+                        String remaining = builder.getRemainingLowerCase();
+                        for (ServerPlayer online : ctx.getSource().getServer().getPlayerList().getPlayers()) {
+                            String name = online.getScoreboardName();
+                            if (name.toLowerCase().startsWith(remaining)) builder.suggest(name);
+                        }
+                        return builder.buildFuture();
+                    })
+                    .executes(ctx -> {
+                        String requested = StringArgumentType.getString(ctx, "playerName").strip();
+
+                        // Prefer an online exact match so brand-new players work immediately.
+                        ServerPlayer onlineMatch = null;
+                        for (ServerPlayer online : ctx.getSource().getServer().getPlayerList().getPlayers()) {
+                            if (online.getScoreboardName().equalsIgnoreCase(requested)) {
+                                onlineMatch = online;
+                                break;
+                            }
+                        }
+
+                        if (onlineMatch != null) {
+                            shards().rememberPlayer(onlineMatch.getUUID(), onlineMatch.getScoreboardName());
+                            int balance = shards().shards(onlineMatch.getUUID());
+                            String name = onlineMatch.getScoreboardName();
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                name + " has " + balance + " Shards."
+                            ).withStyle(ChatFormatting.AQUA), false);
+                            return 1;
+                        }
+
+                        ShardStore.BalanceEntry saved = shards().findByName(requested);
+                        if (saved == null) {
+                            ctx.getSource().sendFailure(Component.literal(
+                                "No saved Shard balance was found for " + requested + "."
+                            ).withStyle(ChatFormatting.RED));
+                            return 0;
+                        }
+
+                        ctx.getSource().sendSuccess(() -> Component.literal(
+                            saved.name() + " has " + saved.shards() + " Shards."
+                        ).withStyle(ChatFormatting.AQUA), false);
+                        return 1;
+                    }))
+            );
 
             dispatcher.register(Commands.literal("homes")
                 .requires(LuckPermsPermissions::canManageLimits)

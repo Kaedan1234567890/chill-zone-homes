@@ -10,7 +10,10 @@ import java.io.Writer;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -24,7 +27,11 @@ public final class ShardStore {
     public static final class Record {
         public int shards = 0;
         public int purchasedHomeLimit = 3;
+        /** Last username observed for this UUID. Added in fix8; old data remains compatible. */
+        public String lastKnownName = "";
     }
+
+    public record BalanceEntry(UUID uuid, String name, int shards) {}
 
     private ShardStore(Path path, Map<UUID, Record> data) {
         this.path = path;
@@ -51,6 +58,45 @@ public final class ShardStore {
         r.shards = Math.max(0, r.shards);
         r.purchasedHomeLimit = Math.max(3, Math.min(28, r.purchasedHomeLimit));
         return r;
+    }
+
+
+    /** Remember the latest username so /bal can find players even while they are offline. */
+    public synchronized void rememberPlayer(UUID id, String name) {
+        if (id == null || name == null || name.isBlank()) return;
+        Record r = record(id);
+        if (!name.equals(r.lastKnownName)) {
+            r.lastKnownName = name;
+            save();
+        }
+    }
+
+    /** Case-insensitive lookup of a player who has been observed by this mod. */
+    public synchronized BalanceEntry findByName(String name) {
+        if (name == null || name.isBlank()) return null;
+        for (Map.Entry<UUID, Record> e : data.entrySet()) {
+            Record r = e.getValue();
+            if (r != null && r.lastKnownName != null && r.lastKnownName.equalsIgnoreCase(name)) {
+                return new BalanceEntry(e.getKey(), r.lastKnownName, Math.max(0, r.shards));
+            }
+        }
+        return null;
+    }
+
+    /** Richest first; ties are alphabetical by last known username. */
+    public synchronized List<BalanceEntry> rankedBalances() {
+        List<BalanceEntry> out = new ArrayList<>();
+        for (Map.Entry<UUID, Record> e : data.entrySet()) {
+            Record r = e.getValue();
+            if (r == null) continue;
+            String name = r.lastKnownName == null || r.lastKnownName.isBlank()
+                ? "Unknown-" + e.getKey().toString().substring(0, 8)
+                : r.lastKnownName;
+            out.add(new BalanceEntry(e.getKey(), name, Math.max(0, r.shards)));
+        }
+        out.sort(Comparator.comparingInt(BalanceEntry::shards).reversed()
+            .thenComparing(BalanceEntry::name, String.CASE_INSENSITIVE_ORDER));
+        return out;
     }
 
     public int shards(UUID id) { return record(id).shards; }
