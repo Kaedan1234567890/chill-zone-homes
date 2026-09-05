@@ -81,6 +81,19 @@ public final class ShardStore {
         return r.shards;
     }
 
+
+    /** Atomically transfer Shards between two players. Returns true only if the sender had enough. */
+    public synchronized boolean transferShards(UUID from, UUID to, int amount) {
+        if (from == null || to == null || from.equals(to) || amount <= 0) return false;
+        Record sender = record(from);
+        if (sender.shards < amount) return false;
+        Record receiver = record(to);
+        sender.shards -= amount;
+        receiver.shards += amount;
+        save();
+        return true;
+    }
+
     public boolean purchaseNextHome(UUID id, int nextHomeNumber) {
         Record r = record(id);
         if (nextHomeNumber < 4 || nextHomeNumber > 28) return false;

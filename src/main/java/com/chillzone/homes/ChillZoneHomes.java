@@ -146,6 +146,88 @@ public final class ChillZoneHomes implements ModInitializer {
                         })))
             );
 
+            // Player-to-player Shard payments. /pay is a short alias of /shardpay.
+            var shardPayCommand = Commands.literal("shardpay")
+                .then(Commands.argument("player", EntityArgument.player())
+                    .then(Commands.argument("amount", IntegerArgumentType.integer(1))
+                        .executes(ctx -> {
+                            ServerPlayer sender = ctx.getSource().getPlayerOrException();
+                            ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                            int amount = IntegerArgumentType.getInteger(ctx, "amount");
+
+                            if (sender.getUUID().equals(target.getUUID())) {
+                                sender.sendSystemMessage(Component.literal("You cannot pay Shards to yourself.").withStyle(ChatFormatting.RED));
+                                return 0;
+                            }
+
+                            int before = shards().shards(sender.getUUID());
+                            if (before < amount) {
+                                sender.sendSystemMessage(Component.literal(
+                                    "You do not have enough Shards. Balance: " + before
+                                ).withStyle(ChatFormatting.RED));
+                                return 0;
+                            }
+
+                            if (!shards().transferShards(sender.getUUID(), target.getUUID(), amount)) {
+                                sender.sendSystemMessage(Component.literal("Shard payment failed.").withStyle(ChatFormatting.RED));
+                                return 0;
+                            }
+
+                            int senderBalance = shards().shards(sender.getUUID());
+                            int targetBalance = shards().shards(target.getUUID());
+                            ShardSidebar.update(sender, senderBalance);
+                            ShardSidebar.update(target, targetBalance);
+
+                            sender.sendSystemMessage(Component.literal(
+                                "Paid " + amount + " Shards to " + target.getScoreboardName() + ". Balance: " + senderBalance
+                            ).withStyle(ChatFormatting.GREEN));
+                            target.sendSystemMessage(Component.literal(
+                                "You received " + amount + " Shards from " + sender.getScoreboardName() + ". Balance: " + targetBalance
+                            ).withStyle(ChatFormatting.AQUA));
+                            return 1;
+                        })));
+            dispatcher.register(shardPayCommand);
+
+            dispatcher.register(Commands.literal("pay")
+                .then(Commands.argument("player", EntityArgument.player())
+                    .then(Commands.argument("amount", IntegerArgumentType.integer(1))
+                        .executes(ctx -> {
+                            ServerPlayer sender = ctx.getSource().getPlayerOrException();
+                            ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                            int amount = IntegerArgumentType.getInteger(ctx, "amount");
+
+                            if (sender.getUUID().equals(target.getUUID())) {
+                                sender.sendSystemMessage(Component.literal("You cannot pay Shards to yourself.").withStyle(ChatFormatting.RED));
+                                return 0;
+                            }
+
+                            int before = shards().shards(sender.getUUID());
+                            if (before < amount) {
+                                sender.sendSystemMessage(Component.literal(
+                                    "You do not have enough Shards. Balance: " + before
+                                ).withStyle(ChatFormatting.RED));
+                                return 0;
+                            }
+
+                            if (!shards().transferShards(sender.getUUID(), target.getUUID(), amount)) {
+                                sender.sendSystemMessage(Component.literal("Shard payment failed.").withStyle(ChatFormatting.RED));
+                                return 0;
+                            }
+
+                            int senderBalance = shards().shards(sender.getUUID());
+                            int targetBalance = shards().shards(target.getUUID());
+                            ShardSidebar.update(sender, senderBalance);
+                            ShardSidebar.update(target, targetBalance);
+
+                            sender.sendSystemMessage(Component.literal(
+                                "Paid " + amount + " Shards to " + target.getScoreboardName() + ". Balance: " + senderBalance
+                            ).withStyle(ChatFormatting.GREEN));
+                            target.sendSystemMessage(Component.literal(
+                                "You received " + amount + " Shards from " + sender.getScoreboardName() + ". Balance: " + targetBalance
+                            ).withStyle(ChatFormatting.AQUA));
+                            return 1;
+                        })));
+
             dispatcher.register(Commands.literal("homes")
                 .requires(LuckPermsPermissions::canManageLimits)
                 .then(Commands.literal("limit")

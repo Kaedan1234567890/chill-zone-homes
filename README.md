@@ -35,3 +35,12 @@ These commands are intended for Owner/Admin testing and management. The target p
 - Example: if a player purchased 8 homes and staff sets `/homes limit Player 4`, the player is limited to 4 homes.
 - `/homes limit <player> reset` removes the staff override, allowing the player's normal shard-purchased limit to apply again.
 - No existing homes, shard balances, or purchased-home progress are deleted.
+
+
+## Shard payments (fix6)
+Players can now transfer their existing Shards directly to other online players:
+
+- `/pay <player> <amount>`
+- `/shardpay <player> <amount>`
+
+Both commands do the same thing. Payments fail if the sender does not have enough Shards or tries to pay themselves. Both players' shard sidebars update immediately after a successful transfer.
