@@ -1,4 +1,4 @@
-# Chill Zone Homes 0.4.0-alpha-shards-fix5
+# Chill Zone Homes 0.4.0-alpha-shards-fix7-pay
 
 Minecraft 26.2 Fabric server-side homes + Shards update.
 
@@ -44,3 +44,9 @@ Players can now transfer their existing Shards directly to other online players:
 - `/shardpay <player> <amount>`
 
 Both commands do the same thing. Payments fail if the sender does not have enough Shards or tries to pay themselves. Both players' shard sidebars update immediately after a successful transfer.
+
+
+## Fix 7 — pay command compile fix
+- Corrected the command-registration closing parenthesis for `/pay`.
+- `/pay <player> <amount>` and `/shardpay <player> <amount>` remain unchanged.
+- Player arguments continue to use Minecraft player-name suggestions/autocomplete.

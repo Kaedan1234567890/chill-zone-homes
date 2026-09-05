@@ -226,7 +226,7 @@ public final class ChillZoneHomes implements ModInitializer {
                                 "You received " + amount + " Shards from " + sender.getScoreboardName() + ". Balance: " + targetBalance
                             ).withStyle(ChatFormatting.AQUA));
                             return 1;
-                        })));
+                        }))));
 
             dispatcher.register(Commands.literal("homes")
                 .requires(LuckPermsPermissions::canManageLimits)
