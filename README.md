@@ -1,9 +1,9 @@
-# Chill Zone Homes 0.4.0-alpha-shards
+# Chill Zone Homes 0.4.0-alpha-shards-fix5
 
 Minecraft 26.2 Fabric server-side homes + Shards update.
 
 ## Shards
-- 1 Shard per full minute online (AFK time counts).
+- 1 Shard per full 2 minutes online (AFK time counts).
 - Balance persists in `config/chill-zone-shards.json`.
 - Clean per-player sidebar: player name + Shards.
 
