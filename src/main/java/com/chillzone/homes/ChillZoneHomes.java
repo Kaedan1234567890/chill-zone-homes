@@ -53,15 +53,17 @@ public final class ChillZoneHomes implements ModInitializer {
             }));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> ShardSidebar.forget(handler.player.getUUID()));
 
-        // One Shard for every full two minutes the player is online, including AFK time.
+        // Refresh the sidebar once per minute. Award one Shard every full two minutes online, including AFK time.
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             ticks++;
-            if (ticks % 2400L != 0L) return;
+            if (ticks % 1200L != 0L) return;
+
+            boolean awardShard = ticks % 2400L == 0L;
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                shards.addShard(player.getUUID());
+                if (awardShard) shards.addShard(player.getUUID());
                 ShardSidebar.update(player, shards.shards(player.getUUID()));
             }
-            shards.save();
+            if (awardShard) shards.save();
         });
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {

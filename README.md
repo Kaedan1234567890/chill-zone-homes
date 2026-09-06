@@ -67,3 +67,22 @@ Both commands do the same thing. Payments fail if the sender does not have enoug
 - `/bal` — privately shows your own Shard balance in chat.
 - `/bal <player>` — privately shows that player's Shard balance. Online player names autocomplete; saved offline names can still be typed manually.
 - `/baltop` — opens the paginated Shard leaderboard GUI, richest to poorest, 28 players per page.
+
+
+## Fix 10 - /baltop names + player skins
+- `/baltop` now uses player heads tied to each player's actual profile instead of generic Steve heads.
+- Online Java players use their live GameProfile, so their current Java skin is shown.
+- Online Floodgate/Geyser players use the live server profile; when Geyser exposes a converted skin texture, that texture is used. Otherwise Minecraft falls back to the appropriate profile/default skin rather than forcing one Steve head for everyone.
+- Offline player names are backfilled from the vanilla `usercache.json`, so older Shard balances can recover names without requiring every player to be online at the same time.
+- Saved names continue to work after a player disconnects.
+
+## Fix 11 — sidebar play time
+
+- Keeps all Fix 10 `/bal`, `/baltop`, player-name, player-head, `/pay`, Homes, and Shard features unchanged.
+- `/baltop` still shows 28 players per page, with a Next Page arrow when needed and a Previous Page arrow on page 2+.
+- Adds **Time** directly under **Shards** on each player's sidebar.
+- Shard value is displayed in **light purple**.
+- Play-time value is displayed in **yellow**.
+- Uses Minecraft's existing `play_time` statistic, so existing player play time is retained rather than starting over with this update.
+- Time formats as minutes, then hours, then days. Days never convert to months (for example `30d 5h`).
+- Sidebar refreshes once per minute; Shard generation remains exactly 1 Shard every 2 minutes online.

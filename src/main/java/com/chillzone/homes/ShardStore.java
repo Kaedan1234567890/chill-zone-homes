@@ -2,6 +2,9 @@ package com.chillzone.homes;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -44,13 +47,56 @@ public final class ShardStore {
             if (Files.exists(path)) {
                 try (Reader r = Files.newBufferedReader(path)) {
                     Map<UUID, Record> loaded = GSON.fromJson(r, TYPE);
-                    return new ShardStore(path, loaded);
+                    ShardStore store = new ShardStore(path, loaded);
+                    store.backfillNamesFromUserCache();
+                    return store;
                 }
             }
         } catch (Exception e) {
             ChillZoneHomes.LOGGER.error("Could not load shard data", e);
         }
-        return new ShardStore(path, new HashMap<>());
+        ShardStore store = new ShardStore(path, new HashMap<>());
+        store.backfillNamesFromUserCache();
+        return store;
+    }
+
+
+    /**
+     * Backfill usernames for older shard entries from the vanilla server usercache.json.
+     * This lets /baltop show offline names even when those players earned Shards before
+     * username tracking was added to this mod.
+     */
+    private synchronized void backfillNamesFromUserCache() {
+        Path userCache = FabricLoader.getInstance().getGameDir().resolve("usercache.json");
+        if (!Files.exists(userCache)) return;
+
+        boolean changed = false;
+        try (Reader reader = Files.newBufferedReader(userCache)) {
+            JsonElement root = GSON.fromJson(reader, JsonElement.class);
+            if (root == null || !root.isJsonArray()) return;
+            JsonArray array = root.getAsJsonArray();
+            for (JsonElement element : array) {
+                if (!element.isJsonObject()) continue;
+                JsonObject obj = element.getAsJsonObject();
+                if (!obj.has("uuid") || !obj.has("name")) continue;
+                try {
+                    UUID id = UUID.fromString(obj.get("uuid").getAsString());
+                    String name = obj.get("name").getAsString();
+                    Record existing = data.get(id);
+                    if (existing == null || name == null || name.isBlank()) continue;
+                    if (existing.lastKnownName == null || existing.lastKnownName.isBlank()
+                        || existing.lastKnownName.startsWith("Unknown-")) {
+                        existing.lastKnownName = name;
+                        changed = true;
+                    }
+                } catch (Exception ignored) {
+                    // Ignore malformed/expired cache rows and continue with the rest.
+                }
+            }
+        } catch (Exception e) {
+            ChillZoneHomes.LOGGER.warn("Could not backfill shard usernames from usercache.json", e);
+        }
+        if (changed) save();
     }
 
     private Record record(UUID id) {

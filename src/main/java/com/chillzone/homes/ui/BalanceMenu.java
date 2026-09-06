@@ -2,7 +2,9 @@ package com.chillzone.homes.ui;
 
 import com.chillzone.homes.ChillZoneHomes;
 import com.chillzone.homes.ShardStore;
+import com.mojang.authlib.GameProfile;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
@@ -13,10 +15,11 @@ import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ResolvableProfile;
 
 import java.util.List;
 
-/** Paginated Shard leaderboard opened by /bal. */
+/** Paginated Shard leaderboard opened by /baltop. */
 public final class BalanceMenu extends ChestMenu {
     private static final int ROWS = 6;
     private static final int[] PLAYER_SLOTS = {
@@ -36,6 +39,12 @@ public final class BalanceMenu extends ChestMenu {
     private BalanceMenu(int id, Inventory inv, ServerPlayer viewer, int requestedPage) {
         super(MenuType.GENERIC_9x6, id, inv, new SimpleContainer(ROWS * 9), ROWS);
         this.viewer = viewer;
+
+        // Refresh names for everyone currently online before building the ranking.
+        // Older/offline names are backfilled from the vanilla usercache by ShardStore.
+        for (ServerPlayer online : viewer.getServer().getPlayerList().getPlayers()) {
+            ChillZoneHomes.shards().rememberPlayer(online.getUUID(), online.getScoreboardName());
+        }
         this.ranked = ChillZoneHomes.shards().rankedBalances();
         int pageCount = Math.max(1, (ranked.size() + PLAYER_SLOTS.length - 1) / PLAYER_SLOTS.length);
         this.page = Math.max(0, Math.min(requestedPage, pageCount - 1));
@@ -71,6 +80,20 @@ public final class BalanceMenu extends ChestMenu {
                 Ui.name("#" + (index + 1) + " — " + name, ChatFormatting.AQUA, ChatFormatting.BOLD),
                 Ui.lore("Shards: " + entry.shards()),
                 Ui.lore("Rank: #" + (index + 1)));
+
+            // Use the player's real profile on the head instead of showing the generic Steve head.
+            // Online Java players use their live GameProfile (including the current skin texture).
+            // Offline entries use the saved name so Minecraft can resolve the profile when possible.
+            ServerPlayer online = viewer.getServer().getPlayerList().getPlayer(entry.uuid());
+            if (online != null) {
+                GameProfile profile = online.getGameProfile();
+                head.set(DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
+            } else if (name != null && !name.isBlank() && !name.startsWith("Unknown-")) {
+                head.set(DataComponents.PROFILE, ResolvableProfile.createUnresolved(name));
+            } else {
+                head.set(DataComponents.PROFILE, ResolvableProfile.createUnresolved(entry.uuid()));
+            }
+
             getContainer().setItem(PLAYER_SLOTS[i], head);
         }
 
