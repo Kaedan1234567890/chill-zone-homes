@@ -32,9 +32,13 @@ public final class ShardStore {
         public int purchasedHomeLimit = 3;
         /** Last username observed for this UUID. Added in fix8; old data remains compatible. */
         public String lastKnownName = "";
+        /** Offset applied to Minecraft's vanilla PLAY_TIME statistic for admin adjustments. */
+        public long playTimeOffsetTicks = 0L;
+        /** Last effective play time seen for this player, so /baltop can show offline players. */
+        public long lastKnownPlayTicks = 0L;
     }
 
-    public record BalanceEntry(UUID uuid, String name, int shards) {}
+    public record BalanceEntry(UUID uuid, String name, int shards, long playTicks) {}
 
     private ShardStore(Path path, Map<UUID, Record> data) {
         this.path = path;
@@ -123,7 +127,7 @@ public final class ShardStore {
         for (Map.Entry<UUID, Record> e : data.entrySet()) {
             Record r = e.getValue();
             if (r != null && r.lastKnownName != null && r.lastKnownName.equalsIgnoreCase(name)) {
-                return new BalanceEntry(e.getKey(), r.lastKnownName, Math.max(0, r.shards));
+                return new BalanceEntry(e.getKey(), r.lastKnownName, Math.max(0, r.shards), Math.max(0L, r.lastKnownPlayTicks));
             }
         }
         return null;
@@ -138,11 +142,50 @@ public final class ShardStore {
             String name = r.lastKnownName == null || r.lastKnownName.isBlank()
                 ? "Unknown-" + e.getKey().toString().substring(0, 8)
                 : r.lastKnownName;
-            out.add(new BalanceEntry(e.getKey(), name, Math.max(0, r.shards)));
+            int shardBalance = Math.max(0, r.shards);
+            long playTicks = Math.max(0L, r.lastKnownPlayTicks);
+            // Do not show completely empty records. A player with either Shards OR play time remains listed.
+            if (shardBalance == 0 && playTicks == 0L) continue;
+            out.add(new BalanceEntry(e.getKey(), name, shardBalance, playTicks));
         }
         out.sort(Comparator.comparingInt(BalanceEntry::shards).reversed()
+            .thenComparing(Comparator.comparingLong(BalanceEntry::playTicks).reversed())
             .thenComparing(BalanceEntry::name, String.CASE_INSENSITIVE_ORDER));
         return out;
+    }
+
+
+    /** Update the cached effective play time using the player's current vanilla PLAY_TIME value. */
+    public synchronized long rememberPlayTime(UUID id, long rawPlayTicks) {
+        Record r = record(id);
+        long effective = Math.max(0L, rawPlayTicks + r.playTimeOffsetTicks);
+        r.lastKnownPlayTicks = effective;
+        return effective;
+    }
+
+    /** Last effective play time cached for an online or offline player. */
+    public synchronized long playTicks(UUID id) {
+        return Math.max(0L, record(id).lastKnownPlayTicks);
+    }
+
+    /** Set effective play time while leaving Minecraft's underlying statistic untouched. */
+    public synchronized long setPlayTicks(UUID id, long rawPlayTicks, long desiredTicks) {
+        Record r = record(id);
+        long desired = Math.max(0L, desiredTicks);
+        r.playTimeOffsetTicks = desired - Math.max(0L, rawPlayTicks);
+        r.lastKnownPlayTicks = desired;
+        save();
+        return desired;
+    }
+
+    public synchronized long addPlayTicks(UUID id, long rawPlayTicks, long amountTicks) {
+        long current = rememberPlayTime(id, rawPlayTicks);
+        return setPlayTicks(id, rawPlayTicks, current + Math.max(0L, amountTicks));
+    }
+
+    public synchronized long takePlayTicks(UUID id, long rawPlayTicks, long amountTicks) {
+        long current = rememberPlayTime(id, rawPlayTicks);
+        return setPlayTicks(id, rawPlayTicks, Math.max(0L, current - Math.max(0L, amountTicks)));
     }
 
     public int shards(UUID id) { return record(id).shards; }

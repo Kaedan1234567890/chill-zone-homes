@@ -47,7 +47,8 @@ public final class ShardSidebar {
             .withStyle(ChatFormatting.WHITE)
             .append(Component.literal(Integer.toString(shards)).withStyle(ChatFormatting.LIGHT_PURPLE));
 
-        long playTicks = player.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
+        long rawPlayTicks = player.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
+        long playTicks = ChillZoneHomes.shards().rememberPlayTime(player.getUUID(), rawPlayTicks);
         Component timeLine = Component.literal("Time: ")
             .withStyle(ChatFormatting.WHITE)
             .append(Component.literal(formatPlayTime(playTicks)).withStyle(ChatFormatting.YELLOW));
@@ -73,7 +74,7 @@ public final class ShardSidebar {
      * Play time is intentionally shown only in minutes, hours, and days.
      * Days keep accumulating forever (for example 30d, 75d) and never convert to months.
      */
-    static String formatPlayTime(long ticks) {
+    public static String formatPlayTime(long ticks) {
         long totalMinutes = Math.max(0L, ticks / 1200L);
         if (totalMinutes < 60L) {
             return totalMinutes + "m";

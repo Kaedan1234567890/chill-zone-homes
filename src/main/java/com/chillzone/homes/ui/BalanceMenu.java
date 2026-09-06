@@ -1,12 +1,14 @@
 package com.chillzone.homes.ui;
 
 import com.chillzone.homes.ChillZoneHomes;
+import com.chillzone.homes.ShardSidebar;
 import com.chillzone.homes.ShardStore;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.stats.Stats;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Inventory;
@@ -40,11 +42,14 @@ public final class BalanceMenu extends ChestMenu {
         super(MenuType.GENERIC_9x6, id, inv, new SimpleContainer(ROWS * 9), ROWS);
         this.viewer = viewer;
 
-        // Refresh names for everyone currently online before building the ranking.
-        // Older/offline names are backfilled from the vanilla usercache by ShardStore.
+        // Refresh names and effective play time for everyone currently online before ranking.
         for (ServerPlayer online : viewer.level().getServer().getPlayerList().getPlayers()) {
             ChillZoneHomes.shards().rememberPlayer(online.getUUID(), online.getScoreboardName());
+            long raw = online.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
+            ChillZoneHomes.shards().rememberPlayTime(online.getUUID(), raw);
         }
+        ChillZoneHomes.shards().save();
+
         this.ranked = ChillZoneHomes.shards().rankedBalances();
         int pageCount = Math.max(1, (ranked.size() + PLAYER_SLOTS.length - 1) / PLAYER_SLOTS.length);
         this.page = Math.max(0, Math.min(requestedPage, pageCount - 1));
@@ -56,7 +61,7 @@ public final class BalanceMenu extends ChestMenu {
     public static void open(ServerPlayer viewer, int page) {
         viewer.openMenu(new SimpleMenuProvider(
             (id, inv, p) -> new BalanceMenu(id, inv, viewer, page),
-            Component.literal("Chill Zone — Shard Balances")
+            Component.literal("Chill Zone SMP Shard Baltop")
         ));
     }
 
@@ -76,14 +81,19 @@ public final class BalanceMenu extends ChestMenu {
             String name = entry.name();
             if (name == null || name.isBlank()) name = "Unknown Player";
 
-            ItemStack head = Ui.button(Ui.item("player_head"),
-                Ui.name("#" + (index + 1) + " — " + name, ChatFormatting.AQUA, ChatFormatting.BOLD),
-                Ui.lore("Shards: " + entry.shards()),
-                Ui.lore("Rank: #" + (index + 1)));
+            Component shardLore = Component.literal("Shards: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(Integer.toString(entry.shards())).withStyle(ChatFormatting.LIGHT_PURPLE));
+            Component timeLore = Component.literal("Time Played: ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(ShardSidebar.formatPlayTime(entry.playTicks())).withStyle(ChatFormatting.YELLOW));
+            Component rankLore = Component.literal("Rank: #" + (index + 1)).withStyle(ChatFormatting.GRAY);
 
-            // Use the player's real profile on the head instead of showing the generic Steve head.
-            // Online Java players use their live GameProfile (including the current skin texture).
-            // Offline entries use the saved name so Minecraft can resolve the profile when possible.
+            ItemStack head = Ui.button(Ui.item("player_head"),
+                Ui.name(name, ChatFormatting.AQUA, ChatFormatting.BOLD),
+                shardLore,
+                timeLore,
+                rankLore);
+
+            // Online players use their live profile/skin. Offline entries resolve from saved profile data when possible.
             ServerPlayer online = viewer.level().getServer().getPlayerList().getPlayer(entry.uuid());
             if (online != null) {
                 GameProfile profile = online.getGameProfile();
@@ -100,7 +110,7 @@ public final class BalanceMenu extends ChestMenu {
         int pageCount = Math.max(1, (ranked.size() + PLAYER_SLOTS.length - 1) / PLAYER_SLOTS.length);
         getContainer().setItem(PAGE_INFO, Ui.button(Ui.item("book"),
             Ui.name("Page " + (page + 1) + " / " + pageCount, ChatFormatting.YELLOW, ChatFormatting.BOLD),
-            Ui.lore(ranked.size() + " player" + (ranked.size() == 1 ? "" : "s") + " ranked by Shards.")));
+            Ui.lore(ranked.size() + " player" + (ranked.size() == 1 ? "" : "s") + " on the leaderboard.")));
 
         if (page > 0) {
             getContainer().setItem(PREVIOUS, Ui.button(Ui.item("arrow"),

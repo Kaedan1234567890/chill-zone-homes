@@ -93,3 +93,20 @@ Both commands do the same thing. Payments fail if the sender does not have enoug
 - Fixes the `cannot find symbol: method getServer()` errors in `BalanceMenu.java`.
 - Uses `viewer.level().getServer()` for Minecraft 26.2 server access.
 - Keeps all Fix 11 features unchanged, including `/bal`, `/baltop`, player heads/skins, play time, Shard colours, payments, Homes, and 1 Shard every 2 minutes.
+
+
+## Fix 13 — Baltop play time + play-time admin controls
+
+- `/baltop` GUI title is now **Chill Zone SMP Shard Baltop**.
+- Hovering a player head now shows: player name, Shards, Time Played, then Rank.
+- Shard values in the hover text are light purple and play-time values are yellow.
+- Players with both 0 Shards and 0 effective play time are omitted from `/baltop`. A player with either Shards or play time still appears.
+- Ranking remains primarily richest-to-poorest by Shards; ties use play time, then name.
+- Existing next/previous page arrows remain unchanged: 28 player entries per page, Next at bottom-right when needed, Previous at bottom-left on page 2+.
+- Adds staff play-time controls under the existing `chillzonehomes.command.shardsadmin` permission:
+  - `/playtime give <player> <amount> <minutes|hours|days>`
+  - `/playtime set <player> <amount> <minutes|hours|days>`
+  - `/playtime take <player> <amount> <minutes|hours|days>`
+  - `/playtime balance <player>`
+- Example to wipe a test player's displayed play time: `/playtime set PlayerName 0 minutes`. If that player also has 0 Shards, they disappear from `/baltop`.
+- Play-time adjustments are stored as an offset alongside the existing shard data, so the player's vanilla Minecraft statistic is not destructively rewritten. Time continues accumulating normally after an adjustment.

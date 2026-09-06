@@ -17,6 +17,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.stats.Stats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +52,12 @@ public final class ChillZoneHomes implements ModInitializer {
                 shards.rememberPlayer(handler.player.getUUID(), handler.player.getScoreboardName());
                 ShardSidebar.update(handler.player, shards.shards(handler.player.getUUID()));
             }));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> ShardSidebar.forget(handler.player.getUUID()));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            long raw = handler.player.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
+            shards.rememberPlayTime(handler.player.getUUID(), raw);
+            shards.save();
+            ShardSidebar.forget(handler.player.getUUID());
+        });
 
         // Refresh the sidebar once per minute. Award one Shard every full two minutes online, including AFK time.
         ServerTickEvents.END_SERVER_TICK.register(server -> {
@@ -63,7 +69,7 @@ public final class ChillZoneHomes implements ModInitializer {
                 if (awardShard) shards.addShard(player.getUUID());
                 ShardSidebar.update(player, shards.shards(player.getUUID()));
             }
-            if (awardShard) shards.save();
+            shards.save();
         });
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
@@ -147,6 +153,104 @@ public final class ChillZoneHomes implements ModInitializer {
                             int balance = shards().shards(target.getUUID());
                             ctx.getSource().sendSuccess(() -> Component.literal(
                                 target.getScoreboardName() + " has " + balance + " Shards."
+                            ).withStyle(ChatFormatting.AQUA), false);
+                            return 1;
+                        })))
+            );
+
+            // Admin play-time controls. Uses the same admin permission as /shards.
+            // The amount is followed by a unit: minutes, hours, or days.
+            dispatcher.register(Commands.literal("playtime")
+                .requires(LuckPermsPermissions::canManageShards)
+                .then(Commands.literal("give")
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("amount", IntegerArgumentType.integer(1))
+                            .then(Commands.argument("unit", StringArgumentType.word())
+                                .suggests((ctx, builder) -> {
+                                    builder.suggest("minutes");
+                                    builder.suggest("hours");
+                                    builder.suggest("days");
+                                    return builder.buildFuture();
+                                })
+                                .executes(ctx -> {
+                                    ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                    int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                                    String unit = StringArgumentType.getString(ctx, "unit");
+                                    long ticksToAdd = playTimeAmountToTicks(amount, unit);
+                                    if (ticksToAdd < 0L) {
+                                        ctx.getSource().sendFailure(Component.literal("Use minutes, hours, or days.").withStyle(ChatFormatting.RED));
+                                        return 0;
+                                    }
+                                    long raw = target.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
+                                    long value = shards().addPlayTicks(target.getUUID(), raw, ticksToAdd);
+                                    ShardSidebar.update(target, shards().shards(target.getUUID()));
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                        "Added " + amount + " " + unit + " to " + target.getScoreboardName() + "'s play time. New time: " + ShardSidebar.formatPlayTime(value)
+                                    ).withStyle(ChatFormatting.GREEN), false);
+                                    return 1;
+                                })))))
+                .then(Commands.literal("set")
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("amount", IntegerArgumentType.integer(0))
+                            .then(Commands.argument("unit", StringArgumentType.word())
+                                .suggests((ctx, builder) -> {
+                                    builder.suggest("minutes");
+                                    builder.suggest("hours");
+                                    builder.suggest("days");
+                                    return builder.buildFuture();
+                                })
+                                .executes(ctx -> {
+                                    ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                    int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                                    String unit = StringArgumentType.getString(ctx, "unit");
+                                    long desiredTicks = playTimeAmountToTicks(amount, unit);
+                                    if (desiredTicks < 0L) {
+                                        ctx.getSource().sendFailure(Component.literal("Use minutes, hours, or days.").withStyle(ChatFormatting.RED));
+                                        return 0;
+                                    }
+                                    long raw = target.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
+                                    long value = shards().setPlayTicks(target.getUUID(), raw, desiredTicks);
+                                    ShardSidebar.update(target, shards().shards(target.getUUID()));
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                        "Set " + target.getScoreboardName() + "'s play time to " + ShardSidebar.formatPlayTime(value) + "."
+                                    ).withStyle(ChatFormatting.GREEN), false);
+                                    return 1;
+                                })))))
+                .then(Commands.literal("take")
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("amount", IntegerArgumentType.integer(1))
+                            .then(Commands.argument("unit", StringArgumentType.word())
+                                .suggests((ctx, builder) -> {
+                                    builder.suggest("minutes");
+                                    builder.suggest("hours");
+                                    builder.suggest("days");
+                                    return builder.buildFuture();
+                                })
+                                .executes(ctx -> {
+                                    ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                    int amount = IntegerArgumentType.getInteger(ctx, "amount");
+                                    String unit = StringArgumentType.getString(ctx, "unit");
+                                    long ticksToTake = playTimeAmountToTicks(amount, unit);
+                                    if (ticksToTake < 0L) {
+                                        ctx.getSource().sendFailure(Component.literal("Use minutes, hours, or days.").withStyle(ChatFormatting.RED));
+                                        return 0;
+                                    }
+                                    long raw = target.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
+                                    long value = shards().takePlayTicks(target.getUUID(), raw, ticksToTake);
+                                    ShardSidebar.update(target, shards().shards(target.getUUID()));
+                                    ctx.getSource().sendSuccess(() -> Component.literal(
+                                        "Removed " + amount + " " + unit + " from " + target.getScoreboardName() + "'s play time. New time: " + ShardSidebar.formatPlayTime(value)
+                                    ).withStyle(ChatFormatting.GREEN), false);
+                                    return 1;
+                                })))))
+                .then(Commands.literal("balance")
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .executes(ctx -> {
+                            ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                            long raw = target.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
+                            long value = shards().rememberPlayTime(target.getUUID(), raw);
+                            ctx.getSource().sendSuccess(() -> Component.literal(
+                                target.getScoreboardName() + " has " + ShardSidebar.formatPlayTime(value) + " of play time."
                             ).withStyle(ChatFormatting.AQUA), false);
                             return 1;
                         })))
@@ -342,4 +446,20 @@ public final class ChillZoneHomes implements ModInitializer {
 
         LOGGER.info("Chill Zone Homes initialized — /home is ready.");
     }
+    private static long playTimeAmountToTicks(int amount, String unit) {
+        long multiplier;
+        if (unit == null) return -1L;
+        switch (unit.toLowerCase()) {
+            case "minute", "minutes", "m" -> multiplier = 1200L;
+            case "hour", "hours", "h" -> multiplier = 72000L;
+            case "day", "days", "d" -> multiplier = 1728000L;
+            default -> { return -1L; }
+        }
+        try {
+            return Math.multiplyExact((long) amount, multiplier);
+        } catch (ArithmeticException ex) {
+            return Long.MAX_VALUE;
+        }
+    }
+
 }
