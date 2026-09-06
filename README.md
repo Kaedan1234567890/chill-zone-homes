@@ -86,3 +86,10 @@ Both commands do the same thing. Payments fail if the sender does not have enoug
 - Uses Minecraft's existing `play_time` statistic, so existing player play time is retained rather than starting over with this update.
 - Time formats as minutes, then hours, then days. Days never convert to months (for example `30d 5h`).
 - Sidebar refreshes once per minute; Shard generation remains exactly 1 Shard every 2 minutes online.
+
+
+## Fix 12 — Minecraft 26.2 BalanceMenu compile fix
+
+- Fixes the `cannot find symbol: method getServer()` errors in `BalanceMenu.java`.
+- Uses `viewer.level().getServer()` for Minecraft 26.2 server access.
+- Keeps all Fix 11 features unchanged, including `/bal`, `/baltop`, player heads/skins, play time, Shard colours, payments, Homes, and 1 Shard every 2 minutes.

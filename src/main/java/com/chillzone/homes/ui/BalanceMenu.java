@@ -42,7 +42,7 @@ public final class BalanceMenu extends ChestMenu {
 
         // Refresh names for everyone currently online before building the ranking.
         // Older/offline names are backfilled from the vanilla usercache by ShardStore.
-        for (ServerPlayer online : viewer.getServer().getPlayerList().getPlayers()) {
+        for (ServerPlayer online : viewer.level().getServer().getPlayerList().getPlayers()) {
             ChillZoneHomes.shards().rememberPlayer(online.getUUID(), online.getScoreboardName());
         }
         this.ranked = ChillZoneHomes.shards().rankedBalances();
@@ -84,7 +84,7 @@ public final class BalanceMenu extends ChestMenu {
             // Use the player's real profile on the head instead of showing the generic Steve head.
             // Online Java players use their live GameProfile (including the current skin texture).
             // Offline entries use the saved name so Minecraft can resolve the profile when possible.
-            ServerPlayer online = viewer.getServer().getPlayerList().getPlayer(entry.uuid());
+            ServerPlayer online = viewer.level().getServer().getPlayerList().getPlayer(entry.uuid());
             if (online != null) {
                 GameProfile profile = online.getGameProfile();
                 head.set(DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
