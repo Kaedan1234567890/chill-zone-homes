@@ -8,7 +8,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.stats.Stats;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Inventory;
@@ -42,11 +41,9 @@ public final class BalanceMenu extends ChestMenu {
         super(MenuType.GENERIC_9x6, id, inv, new SimpleContainer(ROWS * 9), ROWS);
         this.viewer = viewer;
 
-        // Refresh names and effective play time for everyone currently online before ranking.
+        // Refresh names for everyone currently online before ranking. Playtime is tracked by this mod itself.
         for (ServerPlayer online : viewer.level().getServer().getPlayerList().getPlayers()) {
             ChillZoneHomes.shards().rememberPlayer(online.getUUID(), online.getScoreboardName());
-            long raw = online.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
-            ChillZoneHomes.shards().rememberPlayTime(online.getUUID(), raw);
         }
         ChillZoneHomes.shards().save();
 

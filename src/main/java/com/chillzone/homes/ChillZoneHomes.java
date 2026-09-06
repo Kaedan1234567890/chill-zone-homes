@@ -17,7 +17,6 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.stats.Stats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,8 +52,6 @@ public final class ChillZoneHomes implements ModInitializer {
                 ShardSidebar.update(handler.player, shards.shards(handler.player.getUUID()));
             }));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            long raw = handler.player.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
-            shards.rememberPlayTime(handler.player.getUUID(), raw);
             shards.save();
             ShardSidebar.forget(handler.player.getUUID());
         });
@@ -62,6 +59,12 @@ public final class ChillZoneHomes implements ModInitializer {
         // Refresh the sidebar once per minute. Award one Shard every full five minutes online, including AFK time.
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             ticks++;
+
+            // Track only time spent online while Chill Zone Homes is running.
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                shards.addTrackedPlayTick(player.getUUID());
+            }
+
             if (ticks % 1200L != 0L) return;
 
             boolean awardShard = ticks % 6000L == 0L;
@@ -181,8 +184,7 @@ public final class ChillZoneHomes implements ModInitializer {
                                         ctx.getSource().sendFailure(Component.literal("Use minutes, hours, or days.").withStyle(ChatFormatting.RED));
                                         return 0;
                                     }
-                                    long raw = target.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
-                                    long value = shards().addPlayTicks(target.getUUID(), raw, ticksToAdd);
+                                    long value = shards().addPlayTicks(target.getUUID(), ticksToAdd);
                                     ShardSidebar.update(target, shards().shards(target.getUUID()));
                                     ctx.getSource().sendSuccess(() -> Component.literal(
                                         "Added " + amount + " " + unit + " to " + target.getScoreboardName() + "'s play time. New time: " + ShardSidebar.formatPlayTime(value)
@@ -208,8 +210,7 @@ public final class ChillZoneHomes implements ModInitializer {
                                         ctx.getSource().sendFailure(Component.literal("Use minutes, hours, or days.").withStyle(ChatFormatting.RED));
                                         return 0;
                                     }
-                                    long raw = target.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
-                                    long value = shards().setPlayTicks(target.getUUID(), raw, desiredTicks);
+                                    long value = shards().setPlayTicks(target.getUUID(), desiredTicks);
                                     ShardSidebar.update(target, shards().shards(target.getUUID()));
                                     ctx.getSource().sendSuccess(() -> Component.literal(
                                         "Set " + target.getScoreboardName() + "'s play time to " + ShardSidebar.formatPlayTime(value) + "."
@@ -235,8 +236,7 @@ public final class ChillZoneHomes implements ModInitializer {
                                         ctx.getSource().sendFailure(Component.literal("Use minutes, hours, or days.").withStyle(ChatFormatting.RED));
                                         return 0;
                                     }
-                                    long raw = target.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
-                                    long value = shards().takePlayTicks(target.getUUID(), raw, ticksToTake);
+                                    long value = shards().takePlayTicks(target.getUUID(), ticksToTake);
                                     ShardSidebar.update(target, shards().shards(target.getUUID()));
                                     ctx.getSource().sendSuccess(() -> Component.literal(
                                         "Removed " + amount + " " + unit + " from " + target.getScoreboardName() + "'s play time. New time: " + ShardSidebar.formatPlayTime(value)
@@ -247,8 +247,7 @@ public final class ChillZoneHomes implements ModInitializer {
                     .then(Commands.argument("player", EntityArgument.player())
                         .executes(ctx -> {
                             ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
-                            long raw = target.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
-                            long value = shards().rememberPlayTime(target.getUUID(), raw);
+                            long value = shards().playTicks(target.getUUID());
                             ctx.getSource().sendSuccess(() -> Component.literal(
                                 target.getScoreboardName() + " has " + ShardSidebar.formatPlayTime(value) + " of play time."
                             ).withStyle(ChatFormatting.AQUA), false);

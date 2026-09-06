@@ -7,7 +7,6 @@ import net.minecraft.network.protocol.game.ClientboundSetDisplayObjectivePacket;
 import net.minecraft.network.protocol.game.ClientboundSetObjectivePacket;
 import net.minecraft.network.protocol.game.ClientboundSetScorePacket;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.stats.Stats;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
@@ -47,8 +46,7 @@ public final class ShardSidebar {
             .withStyle(ChatFormatting.WHITE)
             .append(Component.literal(Integer.toString(shards)).withStyle(ChatFormatting.LIGHT_PURPLE));
 
-        long rawPlayTicks = player.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
-        long playTicks = ChillZoneHomes.shards().rememberPlayTime(player.getUUID(), rawPlayTicks);
+        long playTicks = ChillZoneHomes.shards().playTicks(player.getUUID());
         Component timeLine = Component.literal("Playtime: ")
             .withStyle(ChatFormatting.WHITE)
             .append(Component.literal(formatPlayTime(playTicks)).withStyle(ChatFormatting.YELLOW));

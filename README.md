@@ -114,3 +114,12 @@ Both commands do the same thing. Payments fail if the sender does not have enoug
 ## Fix 15 — Playtime label
 - Renames the sidebar label from **Time** to **Playtime**.
 - Keeps the yellow playtime value, purple Shard value, 5-minute Shard generation, and all other Fix 14 behaviour unchanged.
+
+
+## Fix 16 - playtime tracking correction
+- Removed reliance on Minecraft's lifetime `PLAY_TIME` statistic.
+- Playtime now starts from the Chill Zone tracker and increases only while a player is online with this mod running.
+- Returning players no longer inherit old vanilla playtime when they join.
+- A one-time migration resets previously imported/inaccurate playtime values to 0.
+- Shard balances, homes, and the 1 Shard per 5 minutes rate are unchanged.
+- `/playtime give`, `/playtime set`, `/playtime take`, and `/playtime balance` still work against the new Chill Zone playtime value.

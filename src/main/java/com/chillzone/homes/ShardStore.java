@@ -32,10 +32,10 @@ public final class ShardStore {
         public int purchasedHomeLimit = 3;
         /** Last username observed for this UUID. Added in fix8; old data remains compatible. */
         public String lastKnownName = "";
-        /** Offset applied to Minecraft's vanilla PLAY_TIME statistic for admin adjustments. */
-        public long playTimeOffsetTicks = 0L;
-        /** Last effective play time seen for this player, so /baltop can show offline players. */
+        /** Chill Zone playtime tracked by this mod only. It starts from zero after the Fix 16 migration. */
         public long lastKnownPlayTicks = 0L;
+        /** Legacy field retained only so older JSON files remain compatible. No longer used for tracking. */
+        public long playTimeOffsetTicks = 0L;
     }
 
     public record BalanceEntry(UUID uuid, String name, int shards, long playTicks) {}
@@ -52,6 +52,7 @@ public final class ShardStore {
                 try (Reader r = Files.newBufferedReader(path)) {
                     Map<UUID, Record> loaded = GSON.fromJson(r, TYPE);
                     ShardStore store = new ShardStore(path, loaded);
+                    store.resetLegacyImportedPlaytimeOnce();
                     store.backfillNamesFromUserCache();
                     return store;
                 }
@@ -60,10 +61,36 @@ public final class ShardStore {
             ChillZoneHomes.LOGGER.error("Could not load shard data", e);
         }
         ShardStore store = new ShardStore(path, new HashMap<>());
+        store.resetLegacyImportedPlaytimeOnce();
         store.backfillNamesFromUserCache();
         return store;
     }
 
+
+    /**
+     * Fix 16 migration: older builds copied Minecraft's lifetime PLAY_TIME stat into this mod,
+     * which could make returning players appear to gain hours or days instantly. Reset those
+     * imported values exactly once, then track only time actually spent online while this mod runs.
+     */
+    private synchronized void resetLegacyImportedPlaytimeOnce() {
+        Path marker = FabricLoader.getInstance().getConfigDir().resolve("chill-zone-playtime-fix16-migrated.marker");
+        if (Files.exists(marker)) return;
+
+        boolean changed = false;
+        for (Record r : data.values()) {
+            if (r == null) continue;
+            if (r.lastKnownPlayTicks != 0L || r.playTimeOffsetTicks != 0L) changed = true;
+            r.lastKnownPlayTicks = 0L;
+            r.playTimeOffsetTicks = 0L;
+        }
+
+        if (changed) save();
+        try {
+            Files.writeString(marker, "Fix 16 playtime migration complete. Playtime is now tracked only by Chill Zone Homes.\n");
+        } catch (Exception e) {
+            ChillZoneHomes.LOGGER.warn("Could not write Fix 16 playtime migration marker", e);
+        }
+    }
 
     /**
      * Backfill usernames for older shard entries from the vanilla server usercache.json.
@@ -155,37 +182,38 @@ public final class ShardStore {
     }
 
 
-    /** Update the cached effective play time using the player's current vanilla PLAY_TIME value. */
-    public synchronized long rememberPlayTime(UUID id, long rawPlayTicks) {
+    /** Add one server tick of Chill Zone playtime for an online player. */
+    public synchronized void addTrackedPlayTick(UUID id) {
         Record r = record(id);
-        long effective = Math.max(0L, rawPlayTicks + r.playTimeOffsetTicks);
-        r.lastKnownPlayTicks = effective;
-        return effective;
+        if (r.lastKnownPlayTicks < Long.MAX_VALUE) r.lastKnownPlayTicks++;
     }
 
-    /** Last effective play time cached for an online or offline player. */
+    /** Chill Zone playtime cached for an online or offline player. */
     public synchronized long playTicks(UUID id) {
         return Math.max(0L, record(id).lastKnownPlayTicks);
     }
 
-    /** Set effective play time while leaving Minecraft's underlying statistic untouched. */
-    public synchronized long setPlayTicks(UUID id, long rawPlayTicks, long desiredTicks) {
+    /** Set Chill Zone playtime directly. */
+    public synchronized long setPlayTicks(UUID id, long desiredTicks) {
         Record r = record(id);
-        long desired = Math.max(0L, desiredTicks);
-        r.playTimeOffsetTicks = desired - Math.max(0L, rawPlayTicks);
-        r.lastKnownPlayTicks = desired;
+        r.lastKnownPlayTicks = Math.max(0L, desiredTicks);
+        r.playTimeOffsetTicks = 0L;
         save();
-        return desired;
+        return r.lastKnownPlayTicks;
     }
 
-    public synchronized long addPlayTicks(UUID id, long rawPlayTicks, long amountTicks) {
-        long current = rememberPlayTime(id, rawPlayTicks);
-        return setPlayTicks(id, rawPlayTicks, current + Math.max(0L, amountTicks));
+    public synchronized long addPlayTicks(UUID id, long amountTicks) {
+        Record r = record(id);
+        long amount = Math.max(0L, amountTicks);
+        long current = Math.max(0L, r.lastKnownPlayTicks);
+        long next = Long.MAX_VALUE - current < amount ? Long.MAX_VALUE : current + amount;
+        return setPlayTicks(id, next);
     }
 
-    public synchronized long takePlayTicks(UUID id, long rawPlayTicks, long amountTicks) {
-        long current = rememberPlayTime(id, rawPlayTicks);
-        return setPlayTicks(id, rawPlayTicks, Math.max(0L, current - Math.max(0L, amountTicks)));
+    public synchronized long takePlayTicks(UUID id, long amountTicks) {
+        Record r = record(id);
+        long current = Math.max(0L, r.lastKnownPlayTicks);
+        return setPlayTicks(id, Math.max(0L, current - Math.max(0L, amountTicks)));
     }
 
     public int shards(UUID id) { return record(id).shards; }
