@@ -2,59 +2,26 @@ plugins {
     id 'net.fabricmc.fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
-
 version = project.mod_version
 group = project.maven_group
-
-base {
-    archivesName = project.archives_base_name
-}
-
-repositories {
-    mavenCentral()
-    maven { url = "https://repo.opencollab.dev/main/" }
-}
+base { archivesName = project.archives_base_name }
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-    compileOnly "net.luckperms:api:5.4"
-    compileOnly "org.geysermc.floodgate:api:2.2.5-SNAPSHOT"
+    compileOnly files("libs/chill-zone-homes.jar")
 }
-
 processResources {
-    def version = project.version
-    inputs.property "version", version
-    filesMatching("fabric.mod.json") {
-        expand "version": version
-    }
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") { expand "version": project.version }
 }
-
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
+    options.release = 25
+    options.encoding = "UTF-8"
 }
-
 java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
-}
-
-publishing {
-    publications {
-        create("mavenJava", MavenPublication) {
-            from components.java
-        }
-    }
-}
-
-// Safety: older repository copies accidentally contained Chill Zone Vanish sources.
-// Homes must never compile those unrelated files, even if they remain in the clone.
-sourceSets {
-    main {
-        java {
-            exclude 'com/chillzone/vanish/**'
-        }
-    }
 }

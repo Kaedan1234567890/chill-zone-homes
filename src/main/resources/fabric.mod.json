@@ -1,20 +1,17 @@
 {
   "schemaVersion": 1,
-  "id": "chillzonehomes",
+  "id": "chillzoneresetplayer",
   "version": "${version}",
-  "name": "Chill Zone Homes",
-  "description": "Chill Zone SMP homes with shard progression and purchasable home slots.",
-  "authors": ["Chill Zone SMP"],
+  "name": "Chill Zone Reset Player",
+  "description": "Admin reset command for Chill Zone Homes shard/playtime leaderboard data.",
+  "authors": ["Chill Zone"],
   "environment": "server",
-  "entrypoints": {
-    "main": ["com.chillzone.homes.ChillZoneHomes"]
-  },
-  "mixins": ["chillzonehomes.mixins.json"],
+  "entrypoints": {"main": ["com.chillzone.resetplayer.ResetPlayerMod"]},
   "depends": {
     "fabricloader": ">=0.19.3",
     "fabric-api": "*",
     "minecraft": "=26.2",
     "java": ">=25",
-    "luckperms": "*"
+    "chillzonehomes": ">=0.4.0-alpha-shards-fix16-playtime-tracking"
   }
 }
