@@ -1,18 +1,14 @@
-# Chill Zone Reset Player Addon
+# Fix 1 — standalone build
 
-Server-side addon for the existing Chill Zone Homes 0.4.0-alpha-shards-fix16-playtime-tracking mod.
+This must be uploaded as its OWN GitHub repository/project, not copied into the existing chill-zone-homes source repository.
+
+It contains the existing working Homes JAR in `libs/` only so Gradle can reference it without compiling Homes, Geyser, Floodgate, Vanish or LuckPerms source.
 
 Command:
-`/resetplayer <stored-player>`
+`/resetplayer <stored name>`
 
-- Works on offline stored players.
-- Autocompletes names currently represented in `/baltop`.
-- Sets Shards to 0.
-- Sets tracked playtime to 0.
-- The existing `rankedBalances()` logic excludes records where both values are zero, so the reset player disappears from `/baltop`.
-- Requires Minecraft gamemaster/admin command permission.
-- Does not change `/shardshop`.
+The command works on offline stored records, provides stored-name suggestions, resets shards/playtime to zero, and creates a backup of the JSON before editing.
 
-This is an addon because only the compiled Homes JAR was available. Keep the existing Homes JAR installed alongside the built addon JAR.
+Do not remove the existing Homes JAR from the Minecraft server. The built Reset Player JAR is installed beside it.
 
-Compile status: not claimed until GitHub Actions is green.
+Compile status is not claimed until GitHub Actions is green.

@@ -3,15 +3,16 @@
   "id": "chillzoneresetplayer",
   "version": "${version}",
   "name": "Chill Zone Reset Player",
-  "description": "Admin reset command for Chill Zone Homes shard/playtime leaderboard data.",
+  "description": "Adds an offline-capable resetplayer command for Chill Zone Homes leaderboard data.",
   "authors": ["Chill Zone"],
   "environment": "server",
-  "entrypoints": {"main": ["com.chillzone.resetplayer.ResetPlayerMod"]},
+  "entrypoints": {
+    "main": ["com.chillzone.resetplayer.ResetPlayerMod"]
+  },
   "depends": {
     "fabricloader": ">=0.19.3",
-    "fabric-api": "*",
     "minecraft": "=26.2",
     "java": ">=25",
-    "chillzonehomes": ">=0.4.0-alpha-shards-fix16-playtime-tracking"
+    "fabric-api": "*"
   }
 }
