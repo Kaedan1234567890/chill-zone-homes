@@ -160,6 +160,18 @@ public final class ShardStore {
         return null;
     }
 
+    /** All players this mod has observed, including offline players and zero-balance players. */
+    public synchronized List<BalanceEntry> knownPlayers() {
+        List<BalanceEntry> out = new ArrayList<>();
+        for (Map.Entry<UUID, Record> e : data.entrySet()) {
+            Record r = e.getValue();
+            if (r == null || r.lastKnownName == null || r.lastKnownName.isBlank()) continue;
+            out.add(new BalanceEntry(e.getKey(), r.lastKnownName, Math.max(0, r.shards), Math.max(0L, r.lastKnownPlayTicks)));
+        }
+        out.sort(Comparator.comparing(BalanceEntry::name, String.CASE_INSENSITIVE_ORDER));
+        return out;
+    }
+
     /** Richest first; ties are alphabetical by last known username. */
     public synchronized List<BalanceEntry> rankedBalances() {
         List<BalanceEntry> out = new ArrayList<>();

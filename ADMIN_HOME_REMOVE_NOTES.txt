@@ -1,0 +1,14 @@
+Chill Zone Homes 0.4.1-alpha-admin-home-remove
+
+Added:
+- /homes remove <player> <home>
+- Player autocomplete includes players previously observed by Chill Zone Homes, including offline players.
+- Home autocomplete shows the selected player's saved homes.
+- Removing a home deletes it immediately from chill_zone_homes.json and therefore from that player's Homes UI.
+- New LuckPerms permission: chillzonehomes.command.removehome
+- Console is allowed automatically.
+
+Grant example:
+/lp group owner permission set chillzonehomes.command.removehome true
+
+Existing /homes limit permission remains chillzonehomes.command.limit.

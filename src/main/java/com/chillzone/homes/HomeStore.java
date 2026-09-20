@@ -58,6 +58,15 @@ public final class HomeStore {
     public void setHome(UUID uuid, int index, Home home) { getHomes(uuid).set(index, home); save(); }
     public void deleteHome(UUID uuid, int index) { getHomes(uuid).remove(index); save(); }
 
+    public boolean deleteHomeByName(UUID uuid, String requested) {
+        if (requested == null) return false;
+        String wanted = requested.strip();
+        List<Home> list = getHomes(uuid);
+        boolean removed = list.removeIf(home -> home.name().equalsIgnoreCase(wanted));
+        if (removed) save();
+        return removed;
+    }
+
     public synchronized void save() {
         try {
             Path tmp = file.resolveSibling(file.getFileName() + ".tmp");

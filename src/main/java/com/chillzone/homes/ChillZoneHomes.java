@@ -410,8 +410,8 @@ public final class ChillZoneHomes implements ModInitializer {
             );
 
             dispatcher.register(Commands.literal("homes")
-                .requires(LuckPermsPermissions::canManageLimits)
                 .then(Commands.literal("limit")
+                    .requires(LuckPermsPermissions::canManageLimits)
                     .then(Commands.argument("player", EntityArgument.player())
                         .then(Commands.argument("amount", IntegerArgumentType.integer(1, 28))
                             .executes(ctx -> {
@@ -437,6 +437,49 @@ public final class ChillZoneHomes implements ModInitializer {
                                 );
                                 ctx.getSource().sendSuccess(() -> Component.literal(
                                     "Reset " + target.getScoreboardName() + "'s home limit to the default."
+                                ).withStyle(ChatFormatting.GREEN), false);
+                                return 1;
+                            }))))
+                .then(Commands.literal("remove")
+                    .requires(LuckPermsPermissions::canRemoveHomes)
+                    .then(Commands.argument("player", StringArgumentType.word())
+                        .suggests((ctx, builder) -> {
+                            String remaining = builder.getRemainingLowerCase();
+                            for (ShardStore.BalanceEntry entry : shards().knownPlayers()) {
+                                if (entry.name().toLowerCase().startsWith(remaining)) builder.suggest(entry.name());
+                            }
+                            return builder.buildFuture();
+                        })
+                        .then(Commands.argument("home", StringArgumentType.greedyString())
+                            .suggests((ctx, builder) -> {
+                                String playerName = StringArgumentType.getString(ctx, "player");
+                                ShardStore.BalanceEntry saved = shards().findByName(playerName);
+                                if (saved == null) return builder.buildFuture();
+                                String remaining = builder.getRemainingLowerCase();
+                                for (Home home : store().getHomes(saved.uuid()).stream()
+                                    .sorted(Comparator.comparing(Home::name, String.CASE_INSENSITIVE_ORDER)).toList()) {
+                                    if (home.name().toLowerCase().startsWith(remaining)) builder.suggest(home.name());
+                                }
+                                return builder.buildFuture();
+                            })
+                            .executes(ctx -> {
+                                String playerName = StringArgumentType.getString(ctx, "player");
+                                String homeName = StringArgumentType.getString(ctx, "home").strip();
+                                ShardStore.BalanceEntry saved = shards().findByName(playerName);
+                                if (saved == null) {
+                                    ctx.getSource().sendFailure(Component.literal(
+                                        "No saved player data was found for " + playerName + "."
+                                    ).withStyle(ChatFormatting.RED));
+                                    return 0;
+                                }
+                                if (!store().deleteHomeByName(saved.uuid(), homeName)) {
+                                    ctx.getSource().sendFailure(Component.literal(
+                                        saved.name() + " does not have a home named '" + homeName + "'."
+                                    ).withStyle(ChatFormatting.RED));
+                                    return 0;
+                                }
+                                ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Removed " + saved.name() + "'s home '" + homeName + "'."
                                 ).withStyle(ChatFormatting.GREEN), false);
                                 return 1;
                             }))))
