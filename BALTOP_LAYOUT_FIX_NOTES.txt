@@ -1,0 +1,10 @@
+Chill Zone Homes 0.4.2-alpha-baltop-clean-layout
+
+Change scope: /baltop GUI layout only.
+
+- Ranked player heads now begin at slot 0 (top-left) and fill all 45 slots above the bottom row.
+- All unused slots above the bottom row remain empty.
+- Gray glass filler exists only in bottom-row slots 45-53.
+- Previous/Next arrows and the Page book replace their bottom-row glass slots when present.
+- No shard balances, playtime, UUIDs, remembered names, rankings, homes, or other persisted data are reset or migrated.
+- Existing leaderboard data continues to be read from the same ShardStore/data files as before.

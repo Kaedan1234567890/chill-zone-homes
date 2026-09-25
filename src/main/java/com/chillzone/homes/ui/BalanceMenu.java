@@ -23,11 +23,16 @@ import java.util.List;
 /** Paginated Shard leaderboard opened by /baltop. */
 public final class BalanceMenu extends ChestMenu {
     private static final int ROWS = 6;
+    /**
+     * All five rows above the bottom control row are available for ranked players.
+     * Entries therefore begin in the top-left slot and fill left-to-right, top-to-bottom.
+     */
     private static final int[] PLAYER_SLOTS = {
-        10,11,12,13,14,15,16,
-        19,20,21,22,23,24,25,
-        28,29,30,31,32,33,34,
-        37,38,39,40,41,42,43
+         0, 1, 2, 3, 4, 5, 6, 7, 8,
+         9,10,11,12,13,14,15,16,17,
+        18,19,20,21,22,23,24,25,26,
+        27,28,29,30,31,32,33,34,35,
+        36,37,38,39,40,41,42,43,44
     };
     private static final int PREVIOUS = 45;
     private static final int NEXT = 53;
@@ -63,8 +68,11 @@ public final class BalanceMenu extends ChestMenu {
     }
 
     private void refresh() {
+        // Keep the leaderboard area completely open. Glass is used only on the bottom control row.
+        for (int i = 0; i < PREVIOUS; i++) getContainer().setItem(i, ItemStack.EMPTY);
+
         ItemStack filler = Ui.button(Ui.item("gray_stained_glass_pane"), Component.empty());
-        for (int i = 0; i < ROWS * 9; i++) getContainer().setItem(i, filler.copy());
+        for (int i = PREVIOUS; i < ROWS * 9; i++) getContainer().setItem(i, filler.copy());
 
         int start = page * PLAYER_SLOTS.length;
         for (int i = 0; i < PLAYER_SLOTS.length; i++) {
