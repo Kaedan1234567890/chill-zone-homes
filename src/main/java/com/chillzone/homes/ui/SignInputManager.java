@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.level.block.entity.SignText;
+import net.minecraft.world.level.block.entity.SignTextSlot;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
@@ -93,14 +94,14 @@ public final class SignInputManager {
         }
 
         String heading = (prompt == null || prompt.isBlank()) ? "Type answer here" : prompt;
-        Component[] lines = new Component[] {
+        List<Component> lines = List.of(
             Component.literal(fitHeading(heading)),
             Component.literal("      ↓      "),
             Component.empty(),
             Component.empty()
-        };
+        );
 
-        sign.setText(new SignText(lines, lines, DyeColor.BLACK, false), true);
+        sign.setText(new SignText(lines, lines, DyeColor.BLACK, false), SignTextSlot.FRONT);
         sign.setAllowedPlayerEditor(player.getUUID());
         sign.setChanged();
 
@@ -115,7 +116,7 @@ public final class SignInputManager {
         // Use Minecraft's normal sign-editor path rather than manually sending
         // an OpenSignEditor packet. Vanilla re-syncs the real SignBlockEntity
         // and opens the editor in the protocol shape Geyser expects.
-        player.openTextEdit(sign, true);
+        player.openTextEdit(sign, SignTextSlot.FRONT);
     }
 
     private static SignLocation findSafeLocation(ServerPlayer player, ServerLevel level) {
@@ -154,12 +155,12 @@ public final class SignInputManager {
     /** Called from ServerGamePacketListenerImplMixin. Returns true when consumed. */
     public static boolean handleUpdate(ServerPlayer player, ServerboundSignUpdatePacket packet) {
         PendingInput pending = PENDING.get(player.getUUID());
-        if (pending == null || !pending.signPos.equals(packet.getPos())) return false;
+        if (pending == null || !pending.signPos.equals(packet.pos())) return false;
 
         PENDING.remove(player.getUUID());
         cleanup((ServerLevel) player.level(), pending.signPos, pending.supportPos);
 
-        String[] lines = packet.getLines();
+        List<String> lines = packet.lines();
         String answer = extractAnswer(lines);
         if (answer.length() > 32) answer = answer.substring(0, 32);
 
@@ -174,14 +175,14 @@ public final class SignInputManager {
      * Instruction text is ignored, so Create/Rename/Search all share the same
      * reliable input path.
      */
-    private static String extractAnswer(String[] lines) {
-        if (lines == null || lines.length == 0) return "";
+    private static String extractAnswer(List<String> lines) {
+        if (lines == null || lines.isEmpty()) return "";
 
         // Prefer the intended lower input rows first.
         int[] preferred = new int[] {3, 2, 0, 1};
         for (int index : preferred) {
-            if (index >= lines.length || lines[index] == null) continue;
-            String value = lines[index].strip();
+            if (index >= lines.size() || lines.get(index) == null) continue;
+            String value = lines.get(index).strip();
             if (value.isBlank()) continue;
             if (isInstruction(value)) continue;
             return value;

@@ -1,0 +1,17 @@
+Chill Zone Homes 0.5.3-alpha-mc26.3-sign-api-fix
+
+Build fix for Minecraft 26.3 Sign API changes.
+
+Fixed SignInputManager.java:
+- SignText now receives List<Component> instead of Component[].
+- SignBlockEntity#setText now uses SignTextSlot.FRONT instead of boolean true.
+- ServerPlayer#openTextEdit now uses SignTextSlot.FRONT instead of boolean true.
+- ServerboundSignUpdatePacket is a record in 26.3, so packet.pos() and packet.lines() replace getPos()/getLines().
+- Input extraction now accepts List<String>.
+
+All 0.5.2 Homes behavior is retained, including:
+- 1 free home
+- Home 2 = 100 Shards, Home 3 = 150 Shards, then +100 each additional slot
+- /home and /homes behavior/autocomplete
+- /homes limit reset/remove/undo controls
+- fixed /homes remove <player> <home> permissions/behavior
