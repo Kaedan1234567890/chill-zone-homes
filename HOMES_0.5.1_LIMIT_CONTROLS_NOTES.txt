@@ -1,0 +1,48 @@
+Chill Zone Homes 0.5.1-alpha-home-limit-controls
+Target: Minecraft 26.3 / Fabric
+
+HOME PROGRESSION
+- Home 1 is free.
+- Home 2 costs 100 Shards.
+- Home 3 costs 150 Shards.
+- Home 4 costs 250 Shards.
+- Every additional slot after Home 3 costs +100 Shards.
+- Home 28 costs 2,650 Shards.
+- Existing /home, /homes GUI, home-name autocomplete, /pay, /bal, /baltop and Shard systems are retained.
+
+ADMIN HOME LIMIT CONTROLS
+- /homes limit <player> <1-28>
+  Sets a hard staff cap. It does not delete saved homes or purchased progression.
+
+- /homes limit <player> reset
+  Resets the player's purchased slot progression to 1, but DOES NOT remove the current hard staff cap.
+  Example: set hard limit to 1, then reset -> player remains capped at 1 and cannot buy more.
+  Saved home locations are preserved rather than deleted.
+
+- /homes limit <player> remove
+  Removes the hard staff cap. The player's normal Shard-purchased allowance applies again.
+  If reset was used first, the player resumes at 1 and can buy slots again normally.
+
+- /homes limit <player> undo
+  Restores the purchased slot allowance saved by the most recent reset and removes the hard staff cap.
+  This is the recovery option if you want to give the player's previous slot allowance back.
+
+EXISTING INDIVIDUAL HOME REMOVAL
+- /homes remove <player> <home>
+  Still deletes one actual saved home.
+  Permission: chillzonehomes.command.removehome
+
+OWNER PERMISSION TO MAKE /homes remove APPEAR IN AUTOCOMPLETE
+Shockbyte console:
+  lp group owner permission set chillzonehomes.command.removehome true
+
+LIMIT ADMIN PERMISSION
+  chillzonehomes.command.limit
+
+BUILD
+- Gradle properties updated to Minecraft 26.3, Fabric Loader 0.19.5, Fabric API 0.162.0+26.3.
+- GitHub Actions updated to Gradle 9.6.0.
+- Java 25 retained.
+
+NOTE
+This ZIP is the proper editable source prototype. Build it with the included GitHub Actions workflow, then test the generated JAR on the creative/test instance before live use.

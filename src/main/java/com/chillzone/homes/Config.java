@@ -11,7 +11,7 @@ import java.nio.file.Path;
 
 public final class Config {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    public int defaultHomes = 3;
+    public int defaultHomes = 1;
     public int maximumVisibleSlots = 28;
     public String luckPermsMetaKey = "homes-max";
     public boolean showLockedSlots = true;
@@ -24,6 +24,9 @@ public final class Config {
                 try (Reader r = Files.newBufferedReader(path)) {
                     Config cfg = GSON.fromJson(r, Config.class);
                     if (cfg != null) {
+                        // 0.5.1 progression migration: the old public default was 3 free homes.
+                        // On the new 26.3 server, the intended baseline is 1 free home.
+                        if (cfg.defaultHomes == 3) cfg.defaultHomes = 1;
                         cfg = sanitize(cfg);
                         // 0.3.0 raises the old alpha default from 18 to 24 without overriding custom larger values.
                         if (cfg.maximumVisibleSlots == 18 || cfg.maximumVisibleSlots == 24) cfg.maximumVisibleSlots = 28;

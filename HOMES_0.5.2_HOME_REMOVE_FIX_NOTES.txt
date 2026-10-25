@@ -1,0 +1,26 @@
+Chill Zone Homes 0.5.2-alpha-home-remove-fix
+Target: Minecraft 26.3 / Fabric
+
+FIXED
+- /homes remove <player> <home> remains the individual saved-home removal command.
+- It now accepts either of the Homes admin permissions:
+    chillzonehomes.command.limit
+    chillzonehomes.command.removehome
+- This means an Owner who already has the Homes limit/admin permission will see and be able to use /homes remove without needing a second permission node.
+- Console remains allowed automatically.
+- The dedicated removehome node is retained for backwards compatibility if a server wants to grant removal separately.
+
+UNCHANGED
+- /home and /homes player behavior
+- Home-name autocomplete
+- 1 free starting home
+- Home 2 = 100 Shards, Home 3 = 150 Shards, then +100 per additional slot
+- /homes limit <player> <amount|reset|remove|undo> controls
+- Shards, /bal, /baltop, /pay, playtime, GUI behavior
+
+RECOMMENDED OWNER PERMISSION
+Shockbyte console:
+  lp group owner permission set chillzonehomes.command.limit true
+
+The old separate permission still works if desired:
+  lp group owner permission set chillzonehomes.command.removehome true

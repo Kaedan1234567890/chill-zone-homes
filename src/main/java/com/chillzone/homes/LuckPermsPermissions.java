@@ -35,7 +35,10 @@ public final class LuckPermsPermissions {
         if (!(source.getEntity() instanceof ServerPlayer player)) {
             return true;
         }
-        return hasPermission(player, REMOVE_HOME_PERMISSION);
+        // Homes administrators who can manage limits can also remove individual homes.
+        // Keep the dedicated removehome node for backwards compatibility, but do not
+        // require server owners to maintain two separate admin permissions.
+        return hasPermission(player, REMOVE_HOME_PERMISSION) || hasPermission(player, LIMIT_PERMISSION);
     }
 
     public static boolean canManageShards(CommandSourceStack source) {

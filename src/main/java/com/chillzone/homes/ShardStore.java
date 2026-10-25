@@ -29,13 +29,15 @@ public final class ShardStore {
 
     public static final class Record {
         public int shards = 0;
-        public int purchasedHomeLimit = 3;
+        public int purchasedHomeLimit = 1;
         /** Last username observed for this UUID. Added in fix8; old data remains compatible. */
         public String lastKnownName = "";
         /** Chill Zone playtime tracked by this mod only. It starts from zero after the Fix 16 migration. */
         public long lastKnownPlayTicks = 0L;
         /** Legacy field retained only so older JSON files remain compatible. No longer used for tracking. */
         public long playTimeOffsetTicks = 0L;
+        /** Previous purchased slot limit saved by /homes limit <player> reset for one-step undo. */
+        public int previousPurchasedHomeLimit = -1;
     }
 
     public record BalanceEntry(UUID uuid, String name, int shards, long playTicks) {}
@@ -45,6 +47,33 @@ public final class ShardStore {
         this.data = data == null ? new HashMap<>() : data;
     }
 
+    /**
+     * 0.5.1 migration: the previous build gave every player three free slots.
+     * Convert untouched legacy 3-slot records to the new one-free-home baseline exactly once.
+     * Players who had already progressed past 3 keep that progress.
+     */
+    private synchronized void migrateOneFreeHomeProgressionOnce() {
+        Path marker = FabricLoader.getInstance().getConfigDir().resolve("chill-zone-home-progression-v2.marker");
+        if (Files.exists(marker)) return;
+
+        boolean changed = false;
+        for (Record r : data.values()) {
+            if (r == null) continue;
+            if (r.purchasedHomeLimit <= 3) {
+                r.purchasedHomeLimit = 1;
+                changed = true;
+            }
+            r.previousPurchasedHomeLimit = -1;
+        }
+
+        if (changed) save();
+        try {
+            Files.writeString(marker, "0.5.1 migration complete: baseline is now one free home.\n");
+        } catch (Exception e) {
+            ChillZoneHomes.LOGGER.warn("Could not write home progression migration marker", e);
+        }
+    }
+
     public static ShardStore load() {
         Path path = FabricLoader.getInstance().getConfigDir().resolve("chill-zone-shards.json");
         try {
@@ -52,6 +81,7 @@ public final class ShardStore {
                 try (Reader r = Files.newBufferedReader(path)) {
                     Map<UUID, Record> loaded = GSON.fromJson(r, TYPE);
                     ShardStore store = new ShardStore(path, loaded);
+                    store.migrateOneFreeHomeProgressionOnce();
                     store.resetLegacyImportedPlaytimeOnce();
                     store.backfillNamesFromUserCache();
                     return store;
@@ -61,6 +91,7 @@ public final class ShardStore {
             ChillZoneHomes.LOGGER.error("Could not load shard data", e);
         }
         ShardStore store = new ShardStore(path, new HashMap<>());
+        store.migrateOneFreeHomeProgressionOnce();
         store.resetLegacyImportedPlaytimeOnce();
         store.backfillNamesFromUserCache();
         return store;
@@ -133,7 +164,7 @@ public final class ShardStore {
     private Record record(UUID id) {
         Record r = data.computeIfAbsent(id, k -> new Record());
         r.shards = Math.max(0, r.shards);
-        r.purchasedHomeLimit = Math.max(3, Math.min(28, r.purchasedHomeLimit));
+        r.purchasedHomeLimit = Math.max(1, Math.min(28, r.purchasedHomeLimit));
         return r;
     }
 
@@ -271,7 +302,7 @@ public final class ShardStore {
 
     public boolean purchaseNextHome(UUID id, int nextHomeNumber) {
         Record r = record(id);
-        if (nextHomeNumber < 4 || nextHomeNumber > 28) return false;
+        if (nextHomeNumber < 2 || nextHomeNumber > 28) return false;
         int cost = costForHome(nextHomeNumber);
         if (r.shards < cost) return false;
         r.shards -= cost;
@@ -281,8 +312,31 @@ public final class ShardStore {
     }
 
     public static int costForHome(int homeNumber) {
-        // Home 4 = 100; each additional home costs 50 more.
-        return 100 + ((homeNumber - 4) * 50);
+        // Home 1 is free. Home 2 = 100, Home 3 = 150, then +100 per slot.
+        if (homeNumber <= 1) return 0;
+        if (homeNumber == 2) return 100;
+        if (homeNumber == 3) return 150;
+        return 150 + ((homeNumber - 3) * 100);
+    }
+
+    /** Reset purchasable progression to one slot while preserving saved home locations. */
+    public synchronized int resetPurchasedHomeLimit(UUID id) {
+        Record r = record(id);
+        r.previousPurchasedHomeLimit = Math.max(1, Math.min(28, r.purchasedHomeLimit));
+        r.purchasedHomeLimit = 1;
+        save();
+        return r.previousPurchasedHomeLimit;
+    }
+
+    /** Restore the purchased slot progression saved by the most recent reset. */
+    public synchronized int undoPurchasedHomeLimitReset(UUID id) {
+        Record r = record(id);
+        if (r.previousPurchasedHomeLimit < 1) return -1;
+        int restored = Math.max(1, Math.min(28, r.previousPurchasedHomeLimit));
+        r.purchasedHomeLimit = restored;
+        r.previousPurchasedHomeLimit = -1;
+        save();
+        return restored;
     }
 
     public synchronized void save() {

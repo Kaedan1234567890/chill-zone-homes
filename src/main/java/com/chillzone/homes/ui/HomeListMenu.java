@@ -85,7 +85,7 @@ public class HomeListMenu extends ChestMenu {
 
     private ItemStack lockedButton(int index, int limit) {
         int homeNumber = index + 1;
-        if (homeNumber >= 4 && homeNumber <= 28 && index == limit) {
+        if (homeNumber >= 2 && homeNumber <= 28 && index == limit) {
             int cost = ShardStore.costForHome(homeNumber);
             int balance = ChillZoneHomes.shards().shards(player.getUUID());
             return Ui.button(Ui.item("barrier"),
@@ -131,7 +131,7 @@ public class HomeListMenu extends ChestMenu {
         }
         if (index >= limit) {
             int homeNumber = index + 1;
-            if (index == limit && homeNumber >= 4 && homeNumber <= 28) {
+            if (index == limit && homeNumber >= 2 && homeNumber <= 28) {
                 int cost = ShardStore.costForHome(homeNumber);
                 int balance = ChillZoneHomes.shards().shards(player.getUUID());
                 if (balance < cost) {

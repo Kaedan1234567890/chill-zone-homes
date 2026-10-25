@@ -423,11 +423,21 @@ public final class ChillZoneHomes implements ModInitializer {
                                     ctx.getSource().getServer().createCommandSourceStack(), command
                                 );
                                 ctx.getSource().sendSuccess(() -> Component.literal(
-                                    "Set " + target.getScoreboardName() + "'s home limit to " + amount + "."
+                                    "Set " + target.getScoreboardName() + "'s hard home limit to " + amount + "."
                                 ).withStyle(ChatFormatting.GREEN), false);
                                 return 1;
                             }))
                         .then(Commands.literal("reset")
+                            .executes(ctx -> {
+                                ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                int previous = shards().resetPurchasedHomeLimit(target.getUUID());
+                                ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Reset " + target.getScoreboardName() + "'s purchased home slots to 1. "
+                                    + "Their current hard limit is unchanged. Previous purchased allowance: " + previous + "."
+                                ).withStyle(ChatFormatting.GREEN), false);
+                                return 1;
+                            }))
+                        .then(Commands.literal("remove")
                             .executes(ctx -> {
                                 ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                                 String key = config().luckPermsMetaKey;
@@ -436,7 +446,29 @@ public final class ChillZoneHomes implements ModInitializer {
                                     ctx.getSource().getServer().createCommandSourceStack(), command
                                 );
                                 ctx.getSource().sendSuccess(() -> Component.literal(
-                                    "Reset " + target.getScoreboardName() + "'s home limit to the default."
+                                    "Removed " + target.getScoreboardName() + "'s hard home limit. "
+                                    + "Their normal Shard-purchased allowance now applies."
+                                ).withStyle(ChatFormatting.GREEN), false);
+                                return 1;
+                            }))
+                        .then(Commands.literal("undo")
+                            .executes(ctx -> {
+                                ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                int restored = shards().undoPurchasedHomeLimitReset(target.getUUID());
+                                if (restored < 1) {
+                                    ctx.getSource().sendFailure(Component.literal(
+                                        "There is no recent home-limit reset to undo for " + target.getScoreboardName() + "."
+                                    ).withStyle(ChatFormatting.RED));
+                                    return 0;
+                                }
+                                String key = config().luckPermsMetaKey;
+                                String command = "lp user " + target.getScoreboardName() + " meta unset " + key;
+                                ctx.getSource().getServer().getCommands().performPrefixedCommand(
+                                    ctx.getSource().getServer().createCommandSourceStack(), command
+                                );
+                                ctx.getSource().sendSuccess(() -> Component.literal(
+                                    "Restored " + target.getScoreboardName() + "'s purchased home allowance to "
+                                    + restored + " and removed the hard limit."
                                 ).withStyle(ChatFormatting.GREEN), false);
                                 return 1;
                             }))))
