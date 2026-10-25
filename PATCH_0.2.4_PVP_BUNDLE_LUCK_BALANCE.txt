@@ -1,0 +1,8 @@
+Chill Zone Shop 0.2.4
+
+Changes:
+- Adds Warrior's Fury in the center slot of Effect Bundles.
+- Warrior's Fury costs 65 Shards and grants Strength III + Speed II + Fire Resistance for 3 minutes.
+- Fortune's Favor duration reduced from 10 minutes to 5 minutes.
+- Fortune's Favor hover text now explains vanilla Luck: it improves fishing loot odds and does not improve enchanting-table results or Fortune mining.
+- Keeps 0.2.3 repair-confirm price UI and all existing shop behavior.

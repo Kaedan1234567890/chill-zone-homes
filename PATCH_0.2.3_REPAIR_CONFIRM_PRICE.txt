@@ -1,0 +1,7 @@
+Chill Zone Shop 0.2.3 repair confirmation UX fix
+
+- Red Cancel button is now on the LEFT (slot 11).
+- Green Confirm button is now on the RIGHT (slot 15).
+- Repair confirmation green wool now shows the exact calculated Shard cost before purchase.
+- Repair still revalidates the live inventory item/fingerprint and recalculates the cost server-side before charging.
+- No economy, bundle, death, service, or saved-player data was reset or changed.

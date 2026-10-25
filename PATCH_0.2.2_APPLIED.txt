@@ -1,0 +1,9 @@
+Chill Zone Shop 0.2.2 - Minecraft 26.2 compile patch
+
+ACTUAL SOURCE CHANGES APPLIED:
+- MobEffects.DIG_SPEED -> MobEffects.HASTE
+- MobEffects.JUMP -> MobEffects.JUMP_BOOST
+- MobEffects.MOVEMENT_SPEED -> MobEffects.SPEED
+- mod_version bumped to 0.2.2-alpha-shop-expansion1-mc26-effects-fix
+
+No saved shard/death/player data is reset by this patch.

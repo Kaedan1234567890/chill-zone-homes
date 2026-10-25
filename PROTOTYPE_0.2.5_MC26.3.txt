@@ -1,0 +1,15 @@
+Chill Zone Shop / Shards 0.2.5-alpha-mc26.3-prototype
+
+Prototype goal:
+- No gameplay redesign yet.
+- Update project metadata/toolchain from Minecraft 26.2 to 26.3.
+- Preserve current 0.2.4 Shop/Shards behavior for testing.
+
+Updated:
+- Minecraft 26.3
+- Fabric Loader 0.19.5
+- Loom 1.18-SNAPSHOT
+- Fabric API 0.163.0+26.3
+- GitHub Actions Gradle 9.6.0
+
+Build the JAR with the included GitHub Actions workflow, then test it on the 26.3 test instance.
