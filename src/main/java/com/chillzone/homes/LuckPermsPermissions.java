@@ -13,9 +13,17 @@ public final class LuckPermsPermissions {
     public static final String HOME_PERMISSION = "chillzonehomes.command.home";
     public static final String LIMIT_PERMISSION = "chillzonehomes.command.limit";
     public static final String SHARDS_ADMIN_PERMISSION = "chillzonehomes.command.shardsadmin";
+    public static final String SEASON_RESET_PERMISSION = "chillzonehomes.seasonreset";
     public static final String REMOVE_HOME_PERMISSION = "chillzonehomes.command.removehome";
 
     private LuckPermsPermissions() {}
+
+    /** Console or an explicitly authorized Owner. Never grant this node to inherited staff groups. */
+    public static boolean canResetSeason(CommandSourceStack source) {
+        if (source.getEntity() == null) return true;
+        if (!(source.getEntity() instanceof ServerPlayer player)) return false;
+        return hasPermission(player, SEASON_RESET_PERMISSION);
+    }
 
     public static boolean canUseHome(CommandSourceStack source) {
         if (!(source.getEntity() instanceof ServerPlayer player)) {

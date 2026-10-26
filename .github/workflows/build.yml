@@ -41,5 +41,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: chill-zone-homes
+          name: chill-zone-homes-0.5.5
           path: build/libs/*.jar

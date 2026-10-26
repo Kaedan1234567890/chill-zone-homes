@@ -36,6 +36,22 @@ public final class ChillZoneHomes implements ModInitializer {
     public static Config config() { return config; }
     public static ShardStore shards() { return shards; }
 
+    /** Called at the beginning of a season by Moderation, once per existing reset marker. */
+    public static boolean resetFromServerStart(net.minecraft.server.MinecraftServer server) {
+        if (shards == null) throw new IllegalStateException("Homes ShardStore is not initialized");
+        boolean changed = shards.resetSeasonOnce();
+        if (changed) {
+            ACTIVITY.clear();
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                ACTIVITY.join(player, ticks);
+                ShardSidebar.update(player, 0);
+            }
+            LOGGER.info("Season 2 Shards and Homes-tracked playtime reset completed once");
+        }
+        return changed;
+    }
+
+
     @Override public void onInitialize() {
         SignInputManager.init();
         BedrockInputManager.init();
@@ -113,9 +129,9 @@ public final class ChillZoneHomes implements ModInitializer {
 
 
             dispatcher.register(Commands.literal("homesseasonreset")
-                .requires(source -> source.getPlayer() == null) // console only; backups mandatory
+                .requires(LuckPermsPermissions::canResetSeason) // console or explicitly permitted Owner only
                 .executes(ctx -> {
-                    boolean changed = shards().resetSeasonOnce();
+                    boolean changed = resetFromServerStart(ctx.getSource().getServer());
                     if (changed) {
                         ACTIVITY.clear();
                         for (ServerPlayer player : ctx.getSource().getServer().getPlayerList().getPlayers())

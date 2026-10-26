@@ -1,0 +1,2 @@
+# Chill Zone Homes 0.5.8 — uncompiled source
+Includes the 0.5.5 AFK eligibility gate with recovery hardening, Owner-only /homesseasonreset, and public resetFromServerStart(server) called by Moderation. Uses one-time marker chill-zone-shards-season-reset-v1.marker. IMPORTANT: before real launch backup config/chill-zone-shards.json; do not remove marker unless intentionally starting a truly new season. There is no extra Homes JAR.

@@ -15,6 +15,8 @@ public final class ShardActivityGate {
         String lastStep = "";
         int repeats;
         boolean blockedByPattern;
+        boolean observedRealActivity;
+        int recoverySteps;
         final ArrayDeque<String> recent = new ArrayDeque<>();
     }
     public void join(ServerPlayer player, long tick) {
@@ -52,11 +54,20 @@ public final class ShardActivityGate {
                 if (repeated) {macro=true;break;}
             }
         }
-        s.blockedByPattern = macro;
-        if (!macro) s.lastRealActivity = tick;
+        if (macro) { s.blockedByPattern = true; s.recoverySteps = 0; }
+        else if (s.blockedByPattern) {
+            // Require a sustained change of direction/activity rather than one macro pause.
+            s.recoverySteps++;
+            if (s.recoverySteps >= 30) {
+                s.blockedByPattern = false;
+                s.recoverySteps = 0;
+                s.recent.clear();
+            }
+        }
+        if (!s.blockedByPattern) { s.lastRealActivity = tick; s.observedRealActivity = true; }
     }
     public boolean eligible(UUID id, long tick) {
         State s=states.get(id);
-        return s!=null && tick-s.lastRealActivity<IDLE_TICKS && !s.blockedByPattern;
+        return s!=null && s.observedRealActivity && tick-s.lastRealActivity<IDLE_TICKS && !s.blockedByPattern;
     }
 }
