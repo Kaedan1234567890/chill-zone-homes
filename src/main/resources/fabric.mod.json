@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "chillzonehomes",
+  "version": "${version}",
+  "name": "Chill Zone Homes",
+  "description": "Chill Zone SMP homes with shard progression and purchasable home slots.",
+  "authors": ["Chill Zone SMP"],
+  "environment": "server",
+  "entrypoints": {
+    "main": ["com.chillzone.homes.ChillZoneHomes"]
+  },
+  "mixins": ["chillzonehomes.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "fabric-api": "*",
+    "minecraft": "=26.3",
+    "java": ">=25",
+    "luckperms": "*"
+  }
+}

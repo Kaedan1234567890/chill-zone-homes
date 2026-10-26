@@ -1,0 +1,372 @@
+package com.chillzone.homes;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
+import net.fabricmc.loader.api.FabricLoader;
+
+import java.io.Reader;
+import java.io.Writer;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/** Persistent shard balances and shard-purchased home allowance. */
+public final class ShardStore {
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Type TYPE = new TypeToken<Map<UUID, Record>>(){}.getType();
+    private final Path path;
+    private final Map<UUID, Record> data;
+
+    public static final class Record {
+        public int shards = 0;
+        public int purchasedHomeLimit = 1;
+        /** Last username observed for this UUID. Added in fix8; old data remains compatible. */
+        public String lastKnownName = "";
+        /** Chill Zone playtime tracked by this mod only. It starts from zero after the Fix 16 migration. */
+        public long lastKnownPlayTicks = 0L;
+        /** Legacy field retained only so older JSON files remain compatible. No longer used for tracking. */
+        public long playTimeOffsetTicks = 0L;
+        /** Previous purchased slot limit saved by /homes limit <player> reset for one-step undo. */
+        public int previousPurchasedHomeLimit = -1;
+    }
+
+    public record BalanceEntry(UUID uuid, String name, int shards, long playTicks) {}
+
+    private ShardStore(Path path, Map<UUID, Record> data) {
+        this.path = path;
+        this.data = data == null ? new HashMap<>() : data;
+    }
+
+    /**
+     * 0.5.1 migration: the previous build gave every player three free slots.
+     * Convert untouched legacy 3-slot records to the new one-free-home baseline exactly once.
+     * Players who had already progressed past 3 keep that progress.
+     */
+    private synchronized void migrateOneFreeHomeProgressionOnce() {
+        Path marker = FabricLoader.getInstance().getConfigDir().resolve("chill-zone-home-progression-v2.marker");
+        if (Files.exists(marker)) return;
+
+        boolean changed = false;
+        for (Record r : data.values()) {
+            if (r == null) continue;
+            if (r.purchasedHomeLimit <= 3) {
+                r.purchasedHomeLimit = 1;
+                changed = true;
+            }
+            r.previousPurchasedHomeLimit = -1;
+        }
+
+        if (changed) save();
+        try {
+            Files.writeString(marker, "0.5.1 migration complete: baseline is now one free home.\n");
+        } catch (Exception e) {
+            ChillZoneHomes.LOGGER.warn("Could not write home progression migration marker", e);
+        }
+    }
+
+    public static ShardStore load() {
+        Path path = FabricLoader.getInstance().getConfigDir().resolve("chill-zone-shards.json");
+        try {
+            if (Files.exists(path)) {
+                try (Reader r = Files.newBufferedReader(path)) {
+                    Map<UUID, Record> loaded = GSON.fromJson(r, TYPE);
+                    ShardStore store = new ShardStore(path, loaded);
+                    store.migrateOneFreeHomeProgressionOnce();
+                    store.resetLegacyImportedPlaytimeOnce();
+                    store.backfillNamesFromUserCache();
+                    return store;
+                }
+            }
+        } catch (Exception e) {
+            ChillZoneHomes.LOGGER.error("Could not load shard data", e);
+        }
+        ShardStore store = new ShardStore(path, new HashMap<>());
+        store.migrateOneFreeHomeProgressionOnce();
+        store.resetLegacyImportedPlaytimeOnce();
+        store.backfillNamesFromUserCache();
+        return store;
+    }
+
+
+    /**
+     * Fix 16 migration: older builds copied Minecraft's lifetime PLAY_TIME stat into this mod,
+     * which could make returning players appear to gain hours or days instantly. Reset those
+     * imported values exactly once, then track only time actually spent online while this mod runs.
+     */
+    private synchronized void resetLegacyImportedPlaytimeOnce() {
+        Path marker = FabricLoader.getInstance().getConfigDir().resolve("chill-zone-playtime-fix16-migrated.marker");
+        if (Files.exists(marker)) return;
+
+        boolean changed = false;
+        for (Record r : data.values()) {
+            if (r == null) continue;
+            if (r.lastKnownPlayTicks != 0L || r.playTimeOffsetTicks != 0L) changed = true;
+            r.lastKnownPlayTicks = 0L;
+            r.playTimeOffsetTicks = 0L;
+        }
+
+        if (changed) save();
+        try {
+            Files.writeString(marker, "Fix 16 playtime migration complete. Playtime is now tracked only by Chill Zone Homes.\n");
+        } catch (Exception e) {
+            ChillZoneHomes.LOGGER.warn("Could not write Fix 16 playtime migration marker", e);
+        }
+    }
+
+    /**
+     * Backfill usernames for older shard entries from the vanilla server usercache.json.
+     * This lets /baltop show offline names even when those players earned Shards before
+     * username tracking was added to this mod.
+     */
+    private synchronized void backfillNamesFromUserCache() {
+        Path userCache = FabricLoader.getInstance().getGameDir().resolve("usercache.json");
+        if (!Files.exists(userCache)) return;
+
+        boolean changed = false;
+        try (Reader reader = Files.newBufferedReader(userCache)) {
+            JsonElement root = GSON.fromJson(reader, JsonElement.class);
+            if (root == null || !root.isJsonArray()) return;
+            JsonArray array = root.getAsJsonArray();
+            for (JsonElement element : array) {
+                if (!element.isJsonObject()) continue;
+                JsonObject obj = element.getAsJsonObject();
+                if (!obj.has("uuid") || !obj.has("name")) continue;
+                try {
+                    UUID id = UUID.fromString(obj.get("uuid").getAsString());
+                    String name = obj.get("name").getAsString();
+                    Record existing = data.get(id);
+                    if (existing == null || name == null || name.isBlank()) continue;
+                    if (existing.lastKnownName == null || existing.lastKnownName.isBlank()
+                        || existing.lastKnownName.startsWith("Unknown-")) {
+                        existing.lastKnownName = name;
+                        changed = true;
+                    }
+                } catch (Exception ignored) {
+                    // Ignore malformed/expired cache rows and continue with the rest.
+                }
+            }
+        } catch (Exception e) {
+            ChillZoneHomes.LOGGER.warn("Could not backfill shard usernames from usercache.json", e);
+        }
+        if (changed) save();
+    }
+
+    private Record record(UUID id) {
+        Record r = data.computeIfAbsent(id, k -> new Record());
+        r.shards = Math.max(0, r.shards);
+        r.purchasedHomeLimit = Math.max(1, Math.min(28, r.purchasedHomeLimit));
+        return r;
+    }
+
+
+    /** Remember the latest username so /bal can find players even while they are offline. */
+    public synchronized void rememberPlayer(UUID id, String name) {
+        if (id == null || name == null || name.isBlank()) return;
+        Record r = record(id);
+        if (!name.equals(r.lastKnownName)) {
+            r.lastKnownName = name;
+            save();
+        }
+    }
+
+    /** Case-insensitive lookup of a player who has been observed by this mod. */
+    public synchronized BalanceEntry findByName(String name) {
+        if (name == null || name.isBlank()) return null;
+        for (Map.Entry<UUID, Record> e : data.entrySet()) {
+            Record r = e.getValue();
+            if (r != null && r.lastKnownName != null && r.lastKnownName.equalsIgnoreCase(name)) {
+                return new BalanceEntry(e.getKey(), r.lastKnownName, Math.max(0, r.shards), Math.max(0L, r.lastKnownPlayTicks));
+            }
+        }
+        return null;
+    }
+
+    /** All players this mod has observed, including offline players and zero-balance players. */
+    public synchronized List<BalanceEntry> knownPlayers() {
+        List<BalanceEntry> out = new ArrayList<>();
+        for (Map.Entry<UUID, Record> e : data.entrySet()) {
+            Record r = e.getValue();
+            if (r == null || r.lastKnownName == null || r.lastKnownName.isBlank()) continue;
+            out.add(new BalanceEntry(e.getKey(), r.lastKnownName, Math.max(0, r.shards), Math.max(0L, r.lastKnownPlayTicks)));
+        }
+        out.sort(Comparator.comparing(BalanceEntry::name, String.CASE_INSENSITIVE_ORDER));
+        return out;
+    }
+
+    /** Richest first; ties are alphabetical by last known username. */
+    public synchronized List<BalanceEntry> rankedBalances() {
+        List<BalanceEntry> out = new ArrayList<>();
+        for (Map.Entry<UUID, Record> e : data.entrySet()) {
+            Record r = e.getValue();
+            if (r == null) continue;
+            String name = r.lastKnownName == null || r.lastKnownName.isBlank()
+                ? "Unknown-" + e.getKey().toString().substring(0, 8)
+                : r.lastKnownName;
+            int shardBalance = Math.max(0, r.shards);
+            long playTicks = Math.max(0L, r.lastKnownPlayTicks);
+            // Do not show completely empty records. A player with either Shards OR play time remains listed.
+            if (shardBalance == 0 && playTicks == 0L) continue;
+            out.add(new BalanceEntry(e.getKey(), name, shardBalance, playTicks));
+        }
+        out.sort(Comparator.comparingInt(BalanceEntry::shards).reversed()
+            .thenComparing(Comparator.comparingLong(BalanceEntry::playTicks).reversed())
+            .thenComparing(BalanceEntry::name, String.CASE_INSENSITIVE_ORDER));
+        return out;
+    }
+
+
+    /** Add one server tick of Chill Zone playtime for an online player. */
+    public synchronized void addTrackedPlayTick(UUID id) {
+        Record r = record(id);
+        if (r.lastKnownPlayTicks < Long.MAX_VALUE) r.lastKnownPlayTicks++;
+    }
+
+    /** Chill Zone playtime cached for an online or offline player. */
+    public synchronized long playTicks(UUID id) {
+        return Math.max(0L, record(id).lastKnownPlayTicks);
+    }
+
+    /** Set Chill Zone playtime directly. */
+    public synchronized long setPlayTicks(UUID id, long desiredTicks) {
+        Record r = record(id);
+        r.lastKnownPlayTicks = Math.max(0L, desiredTicks);
+        r.playTimeOffsetTicks = 0L;
+        save();
+        return r.lastKnownPlayTicks;
+    }
+
+    public synchronized long addPlayTicks(UUID id, long amountTicks) {
+        Record r = record(id);
+        long amount = Math.max(0L, amountTicks);
+        long current = Math.max(0L, r.lastKnownPlayTicks);
+        long next = Long.MAX_VALUE - current < amount ? Long.MAX_VALUE : current + amount;
+        return setPlayTicks(id, next);
+    }
+
+    public synchronized long takePlayTicks(UUID id, long amountTicks) {
+        Record r = record(id);
+        long current = Math.max(0L, r.lastKnownPlayTicks);
+        return setPlayTicks(id, Math.max(0L, current - Math.max(0L, amountTicks)));
+    }
+
+    /** Console-only, one-time season reset across online and offline player records. */
+    public synchronized boolean resetSeasonOnce() {
+        Path marker = path.resolveSibling("chill-zone-shards-season-reset-v1.marker");
+        if (Files.exists(marker)) return false;
+        try {
+            if (Files.exists(path)) Files.copy(path, path.resolveSibling("chill-zone-shards-pre-season-reset.bak.json"),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            for (Record record : data.values()) {
+                if (record == null) continue;
+                record.shards = 0;
+                record.lastKnownPlayTicks = 0L;
+                record.playTimeOffsetTicks = 0L;
+            }
+            save();
+            Files.writeString(marker, "Season reset completed. Do not remove without full backup.\n");
+            return true;
+        } catch (java.io.IOException ex) {
+            ChillZoneHomes.LOGGER.error("Season reset failed", ex);
+            throw new IllegalStateException("Season reset failed", ex);
+        }
+    }
+
+    public int shards(UUID id) { return record(id).shards; }
+    public int purchasedHomeLimit(UUID id) { return record(id).purchasedHomeLimit; }
+
+    public void addShard(UUID id) {
+        record(id).shards++;
+    }
+
+    public int addShards(UUID id, int amount) {
+        Record r = record(id);
+        r.shards = Math.max(0, r.shards + Math.max(0, amount));
+        save();
+        return r.shards;
+    }
+
+    public int setShards(UUID id, int amount) {
+        Record r = record(id);
+        r.shards = Math.max(0, amount);
+        save();
+        return r.shards;
+    }
+
+    public int takeShards(UUID id, int amount) {
+        Record r = record(id);
+        r.shards = Math.max(0, r.shards - Math.max(0, amount));
+        save();
+        return r.shards;
+    }
+
+
+    /** Atomically transfer Shards between two players. Returns true only if the sender had enough. */
+    public synchronized boolean transferShards(UUID from, UUID to, int amount) {
+        if (from == null || to == null || from.equals(to) || amount <= 0) return false;
+        Record sender = record(from);
+        if (sender.shards < amount) return false;
+        Record receiver = record(to);
+        sender.shards -= amount;
+        receiver.shards += amount;
+        save();
+        return true;
+    }
+
+    public boolean purchaseNextHome(UUID id, int nextHomeNumber) {
+        Record r = record(id);
+        if (nextHomeNumber < 2 || nextHomeNumber > 28) return false;
+        int cost = costForHome(nextHomeNumber);
+        if (r.shards < cost) return false;
+        r.shards -= cost;
+        r.purchasedHomeLimit = Math.max(r.purchasedHomeLimit, nextHomeNumber);
+        save();
+        return true;
+    }
+
+    public static int costForHome(int homeNumber) {
+        // Home 1 is free. Home 2 = 100, Home 3 = 150, then +100 per slot.
+        if (homeNumber <= 1) return 0;
+        if (homeNumber == 2) return 100;
+        if (homeNumber == 3) return 150;
+        return 150 + ((homeNumber - 3) * 100);
+    }
+
+    /** Reset purchasable progression to one slot while preserving saved home locations. */
+    public synchronized int resetPurchasedHomeLimit(UUID id) {
+        Record r = record(id);
+        r.previousPurchasedHomeLimit = Math.max(1, Math.min(28, r.purchasedHomeLimit));
+        r.purchasedHomeLimit = 1;
+        save();
+        return r.previousPurchasedHomeLimit;
+    }
+
+    /** Restore the purchased slot progression saved by the most recent reset. */
+    public synchronized int undoPurchasedHomeLimitReset(UUID id) {
+        Record r = record(id);
+        if (r.previousPurchasedHomeLimit < 1) return -1;
+        int restored = Math.max(1, Math.min(28, r.previousPurchasedHomeLimit));
+        r.purchasedHomeLimit = restored;
+        r.previousPurchasedHomeLimit = -1;
+        save();
+        return restored;
+    }
+
+    public synchronized void save() {
+        try {
+            Files.createDirectories(path.getParent());
+            try (Writer w = Files.newBufferedWriter(path)) { GSON.toJson(data, TYPE, w); }
+        } catch (Exception e) {
+            ChillZoneHomes.LOGGER.error("Could not save shard data", e);
+        }
+    }
+}

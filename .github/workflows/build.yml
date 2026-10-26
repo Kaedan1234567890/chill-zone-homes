@@ -1,0 +1,45 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.7.1'
+
+      - name: Show project versions
+        run: |
+          java -version
+          gradle --version
+          cat gradle.properties
+
+      - name: Build mod
+        run: |
+          set -o pipefail
+          gradle build --stacktrace --console=plain 2>&1 | tee gradle-build.log
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chill-zone-homes-build-log
+          path: gradle-build.log
+
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: chill-zone-homes
+          path: build/libs/*.jar
