@@ -36,17 +36,17 @@ public final class ChillZoneHomes implements ModInitializer {
     public static Config config() { return config; }
     public static ShardStore shards() { return shards; }
 
-    /** Called at the beginning of a season by Moderation, once per existing reset marker. */
+    /** Called by Moderation on EVERY /server start; each call resets the saved player records. */
     public static boolean resetFromServerStart(net.minecraft.server.MinecraftServer server) {
         if (shards == null) throw new IllegalStateException("Homes ShardStore is not initialized");
-        boolean changed = shards.resetSeasonOnce();
+        boolean changed = shards.resetSeasonEveryStart();
         if (changed) {
             ACTIVITY.clear();
             for (ServerPlayer player : server.getPlayerList().getPlayers()) {
                 ACTIVITY.join(player, ticks);
                 ShardSidebar.update(player, 0);
             }
-            LOGGER.info("Season 2 Shards and Homes-tracked playtime reset completed once");
+            LOGGER.info("Shards and Homes-tracked playtime reset on /server start");
         }
         return changed;
     }
@@ -139,7 +139,7 @@ public final class ChillZoneHomes implements ModInitializer {
                     }
                     ctx.getSource().sendSuccess(() -> Component.literal(changed
                         ? "Chill Zone season Shards and Homes playtime reset completed."
-                        : "Season reset already completed; no data changed."), true);
+                        : "Season reset failed; no data changed."), true);
                     return 1;
                 }));
 
@@ -436,6 +436,7 @@ public final class ChillZoneHomes implements ModInitializer {
 
             // /baltop opens the paginated Shard leaderboard GUI.
             dispatcher.register(Commands.literal("baltop")
+                .requires(LuckPermsPermissions::canUseBaltop)
                 .executes(ctx -> {
                     ServerPlayer viewer = ctx.getSource().getPlayerOrException();
                     shards().rememberPlayer(viewer.getUUID(), viewer.getScoreboardName());

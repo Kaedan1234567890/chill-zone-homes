@@ -259,13 +259,20 @@ public final class ShardStore {
         return setPlayTicks(id, Math.max(0L, current - Math.max(0L, amountTicks)));
     }
 
-    /** Console-only, one-time season reset across online and offline player records. */
-    public synchronized boolean resetSeasonOnce() {
-        Path marker = path.resolveSibling("chill-zone-shards-season-reset-v1.marker");
-        if (Files.exists(marker)) return false;
+    /**
+     * Reset saved Shards and Homes-tracked playtime EVERY time /server start is run.
+     * This deliberately ignores the old one-time season marker (but does not delete it).
+     * Each invocation makes its own uniquely named backup BEFORE modifying player records.
+     * A failed backup aborts the reset instead of risking an unprotected wipe.
+     */
+    public synchronized boolean resetSeasonEveryStart() {
+        Path backup = null;
         try {
-            if (Files.exists(path)) Files.copy(path, path.resolveSibling("chill-zone-shards-pre-season-reset.bak.json"),
-                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            if (Files.exists(path)) {
+                // createTempFile guarantees a unique backup name even on rapid successive starts
+                backup = Files.createTempFile(path.getParent(), "chill-zone-shards-pre-server-start-", ".bak.json");
+                Files.copy(path, backup, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
             for (Record record : data.values()) {
                 if (record == null) continue;
                 record.shards = 0;
@@ -273,11 +280,12 @@ public final class ShardStore {
                 record.playTimeOffsetTicks = 0L;
             }
             save();
-            Files.writeString(marker, "Season reset completed. Do not remove without full backup.\n");
+            ChillZoneHomes.LOGGER.info("/server start reset {} player Shard/playtime records (backup: {})",
+                data.size(), backup == null ? "no previous Shard data file" : backup.getFileName());
             return true;
         } catch (java.io.IOException ex) {
-            ChillZoneHomes.LOGGER.error("Season reset failed", ex);
-            throw new IllegalStateException("Season reset failed", ex);
+            ChillZoneHomes.LOGGER.error("Season reset aborted before changing player records", ex);
+            throw new IllegalStateException("Could not back up Shard data before server start reset", ex);
         }
     }
 

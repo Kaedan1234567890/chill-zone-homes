@@ -11,6 +11,7 @@ import java.lang.reflect.Method;
  */
 public final class LuckPermsPermissions {
     public static final String HOME_PERMISSION = "chillzonehomes.command.home";
+    public static final String BALTOP_PERMISSION = "chillzonehomes.command.baltop";
     public static final String LIMIT_PERMISSION = "chillzonehomes.command.limit";
     public static final String SHARDS_ADMIN_PERMISSION = "chillzonehomes.command.shardsadmin";
     public static final String SEASON_RESET_PERMISSION = "chillzonehomes.seasonreset";
@@ -30,6 +31,12 @@ public final class LuckPermsPermissions {
             return true;
         }
         return hasPermission(player, HOME_PERMISSION);
+    }
+
+    /** Default deny for players; console may access /baltop. */
+    public static boolean canUseBaltop(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) return true;
+        return hasPermission(player, BALTOP_PERMISSION);
     }
 
     public static boolean canManageLimits(CommandSourceStack source) {
