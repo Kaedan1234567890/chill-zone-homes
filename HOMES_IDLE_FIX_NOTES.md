@@ -1,0 +1,1 @@
+Strict Shard activity gate requires meaningful player movement in prior 15 seconds at payout time. /baltop command registration removed from this older Homes baseline to respect Season 2 retirement. Source not compiled or runtime tested; protect current working JAR.

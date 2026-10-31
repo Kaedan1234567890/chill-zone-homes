@@ -434,16 +434,7 @@ public final class ChillZoneHomes implements ModInitializer {
                     }))
             );
 
-            // /baltop opens the paginated Shard leaderboard GUI.
-            dispatcher.register(Commands.literal("baltop")
-                .requires(LuckPermsPermissions::canUseBaltop)
-                .executes(ctx -> {
-                    ServerPlayer viewer = ctx.getSource().getPlayerOrException();
-                    shards().rememberPlayer(viewer.getUUID(), viewer.getScoreboardName());
-                    BalanceMenu.open(viewer);
-                    return 1;
-                })
-            );
+            // /baltop retired for Season 2; no command registered.
 
             dispatcher.register(Commands.literal("homes")
                 .then(Commands.literal("limit")

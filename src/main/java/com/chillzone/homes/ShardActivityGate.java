@@ -5,7 +5,7 @@ import java.util.*;
 
 /** Shard eligibility only; ordinary tracked playtime remains unaffected. */
 public final class ShardActivityGate {
-    private static final long IDLE_TICKS = 5L * 60L * 20L;
+    private static final long IDLE_TICKS = 15L * 20L; // Standing still for 15s blocks Shard payouts
     private static final int PATTERN_THRESHOLD = 20;
     private final Map<UUID, State> states = new HashMap<>();
     private static final class State {
