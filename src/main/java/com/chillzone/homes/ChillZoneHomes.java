@@ -499,6 +499,45 @@ public final class ChillZoneHomes implements ModInitializer {
                                 ).withStyle(ChatFormatting.GREEN), false);
                                 return 1;
                             }))))
+                .then(Commands.literal("goto")
+                    .requires(LuckPermsPermissions::canInspectHomes)
+                    .then(Commands.argument("player", StringArgumentType.word())
+                        .suggests((ctx, builder) -> {
+                            String remaining = builder.getRemainingLowerCase();
+                            for (ShardStore.BalanceEntry entry : shards().knownPlayers()) {
+                                if (entry.name().toLowerCase().startsWith(remaining)) builder.suggest(entry.name());
+                            }
+                            return builder.buildFuture();
+                        })
+                        .then(Commands.argument("home", StringArgumentType.greedyString())
+                            .suggests((ctx, builder) -> {
+                                String playerName = StringArgumentType.getString(ctx, "player");
+                                ShardStore.BalanceEntry saved = shards().findByName(playerName);
+                                if (saved == null) return builder.buildFuture();
+                                String remaining = builder.getRemainingLowerCase();
+                                for (Home home : store().getHomes(saved.uuid()).stream()
+                                        .sorted(Comparator.comparing(Home::name, String.CASE_INSENSITIVE_ORDER)).toList()) {
+                                    if (home.name().toLowerCase().startsWith(remaining)) builder.suggest(home.name());
+                                }
+                                return builder.buildFuture();
+                            })
+                            .executes(ctx -> {
+                                String playerName = StringArgumentType.getString(ctx, "player");
+                                String homeName = StringArgumentType.getString(ctx, "home").strip();
+                                ShardStore.BalanceEntry saved = shards().findByName(playerName);
+                                if (saved == null) {
+                                    ctx.getSource().sendFailure(Component.literal("No saved player data for " + playerName));
+                                    return 0;
+                                }
+                                Home target = store().getHomes(saved.uuid()).stream()
+                                    .filter(h -> h.name().equalsIgnoreCase(homeName)).findFirst().orElse(null);
+                                if (target == null) {
+                                    ctx.getSource().sendFailure(Component.literal(
+                                        saved.name() + " has no home named '" + homeName + "'."));
+                                    return 0;
+                                }
+                                return HomeInspection.inspect(ctx.getSource().getPlayerOrException(), saved.name(), target) ? 1 : 0;
+                            }))))
                 .then(Commands.literal("remove")
                     .requires(LuckPermsPermissions::canRemoveHomes)
                     .then(Commands.argument("player", StringArgumentType.word())

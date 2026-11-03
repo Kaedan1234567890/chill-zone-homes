@@ -46,6 +46,21 @@ public final class LuckPermsPermissions {
         return hasPermission(player, LIMIT_PERMISSION);
     }
 
+    /** Owner-only home inspections, regardless of OP/staff permissions. */
+    public static boolean canInspectHomes(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) return false;
+        try {
+            Class<?> provider = Class.forName("net.luckperms.api.LuckPermsProvider");
+            Object lp = provider.getMethod("get").invoke(null);
+            Object manager = lp.getClass().getMethod("getUserManager").invoke(lp);
+            Object user = manager.getClass().getMethod("getUser", java.util.UUID.class).invoke(manager, player.getUUID());
+            if (user == null) return false;
+            return "owner".equalsIgnoreCase((String) user.getClass().getMethod("getPrimaryGroup").invoke(user));
+        } catch (ReflectiveOperationException | LinkageError ex) {
+            return false;
+        }
+    }
+
     public static boolean canRemoveHomes(CommandSourceStack source) {
         if (!(source.getEntity() instanceof ServerPlayer player)) {
             return true;
