@@ -28,6 +28,10 @@ public class HomeActionsMenu extends ChestMenu {
     }
 
     public static void open(ServerPlayer p, int index) {
+        if (BedrockInputManager.isBedrock(p)) {
+            BedrockHomesMenu.openActions(p, index);
+            return;
+        }
         Home h = ChillZoneHomes.store().getHome(p.getUUID(), index);
         if (h == null) { HomeListMenu.open(p); return; }
         p.openMenu(new SimpleMenuProvider(

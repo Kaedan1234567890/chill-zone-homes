@@ -37,6 +37,10 @@ public class HomeListMenu extends ChestMenu {
     }
 
     public static void open(ServerPlayer player) {
+        if (BedrockInputManager.isBedrock(player)) {
+            BedrockHomesMenu.open(player);
+            return;
+        }
         player.openMenu(new SimpleMenuProvider(
             (id, inv, p) -> new HomeListMenu(id, inv, player),
             Component.literal("Chill Zone — Homes")

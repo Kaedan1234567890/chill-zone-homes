@@ -55,6 +55,7 @@ public final class ChillZoneHomes implements ModInitializer {
     @Override public void onInitialize() {
         SignInputManager.init();
         BedrockInputManager.init();
+        com.chillzone.homes.ui.BedrockHomesMenu.init();
         config = Config.load();
         shards = ShardStore.load();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> store = HomeStore.load(server));
