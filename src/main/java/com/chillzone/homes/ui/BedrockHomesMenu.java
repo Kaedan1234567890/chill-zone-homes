@@ -66,23 +66,32 @@ public final class BedrockHomesMenu {
         int max = Math.min(28, ChillZoneHomes.config().maximumVisibleSlots);
         SimpleForm.Builder form = SimpleForm.builder().title("Chill Zone Homes")
             .content("Your homes: " + homes.size() + " / " + limit + " | Shards: " + ChillZoneHomes.shards().shards(player.getUUID()));
+        List<Runnable> choices = new ArrayList<>();
 
-        // Separate "New Home" button avoids relying on a Java inventory click.
         if (homes.size() < limit && homes.size() < max) {
-            form.button("Create New Home", response -> onServer(player, () -> create(player)));
+            form.button("Create New Home");
+            choices.add(() -> create(player));
         }
         if (homes.size() >= limit && limit < max && limit >= 1) {
             int nextHome = limit + 1;
             int cost = ShardStore.costForHome(nextHome);
-            form.button("Unlock Home " + nextHome + " (" + cost + " Shards)", response -> onServer(player, () -> unlock(player)));
+            form.button("Unlock Home " + nextHome + " (" + cost + " Shards)");
+            choices.add(() -> unlock(player));
         }
         for (int index = 0; index < homes.size(); index++) {
             int selected = index;
             Home home = homes.get(index);
-            form.button("Home " + (index + 1) + ": " + home.name(),
-                response -> onServer(player, () -> openActions(player, selected)));
+            form.button("Home " + (index + 1) + ": " + home.name());
+            choices.add(() -> openActions(player, selected));
         }
-        if (homes.isEmpty() && limit < 1) form.button("No home slots available");
+        if (homes.isEmpty() && choices.isEmpty()) {
+            form.button("No home slots available");
+            choices.add(() -> open(player));
+        }
+        form.validResultHandler(response -> {
+            int clicked = response.clickedButtonId();
+            if (clicked >= 0 && clicked < choices.size()) onServer(player, choices.get(clicked));
+        });
         send(player, form);
     }
 
@@ -143,14 +152,22 @@ public final class BedrockHomesMenu {
         if (home == null) { open(player); return; }
         SimpleForm.Builder form = SimpleForm.builder().title("Home: " + home.name())
             .content("Choose what to do with this home.")
-            .button("Teleport", response -> onServer(player, () -> {
+            .button("Teleport")
+            .button("Rename")
+            .button("Change Icon")
+            .button("Delete")
+            .button("Back");
+        form.validResultHandler(response -> onServer(player, () -> {
+            int clicked = response.clickedButtonId();
+            if (clicked == 0) {
                 Home current = ChillZoneHomes.store().getHome(player.getUUID(), index);
                 if (current != null) HomeTeleport.teleport(player, current);
-            }))
-            .button("Rename", response -> onServer(player, () -> rename(player, index)))
-            .button("Change Icon", response -> onServer(player, () -> iconMenu(player, index)))
-            .button("Delete", response -> onServer(player, () -> confirmDelete(player, index)))
-            .button("Back", response -> onServer(player, () -> open(player)));
+            }
+            else if (clicked == 1) rename(player, index);
+            else if (clicked == 2) iconMenu(player, index);
+            else if (clicked == 3) confirmDelete(player, index);
+            else if (clicked == 4) open(player);
+        }));
         send(player, form);
     }
 
@@ -175,17 +192,22 @@ public final class BedrockHomesMenu {
         Home current = ChillZoneHomes.store().getHome(player.getUUID(), index);
         if (current == null) { open(player); return; }
         String name = current.name();
-        send(player, SimpleForm.builder().title("Delete Home")
+        SimpleForm.Builder form = SimpleForm.builder().title("Delete Home")
             .content("Permanently delete \"" + name + "\"?")
-            .button("Yes, Delete", response -> onServer(player, () -> {
+            .button("Yes, Delete")
+            .button("Cancel");
+        form.validResultHandler(response -> onServer(player, () -> {
+            if (response.clickedButtonId() == 0) {
                 Home latest = ChillZoneHomes.store().getHome(player.getUUID(), index);
                 if (latest != null && latest.name().equals(name)) {
                     ChillZoneHomes.store().deleteHome(player.getUUID(), index);
                     player.sendSystemMessage(Component.literal("Home deleted.").withStyle(ChatFormatting.GREEN));
                 }
                 open(player);
-            }))
-            .button("Cancel", response -> onServer(player, () -> openActions(player, index))));
+            }
+            else if (response.clickedButtonId() == 1) openActions(player, index);
+        }));
+        send(player, form);
     }
 
     private static void iconMenu(ServerPlayer player, int index) {
@@ -193,14 +215,16 @@ public final class BedrockHomesMenu {
         if (current == null) { open(player); return; }
         String[] icons = {"red_bed", "grass_block", "diamond_block", "oak_planks", "chest", "ender_chest", "nether_bricks", "end_stone", "beacon"};
         SimpleForm.Builder form = SimpleForm.builder().title("Home Icon").content("Choose a home icon.");
-        for (String icon : icons) {
-            form.button(icon.replace('_', ' '), response -> onServer(player, () -> {
+        for (String icon : icons) form.button(icon.replace('_', ' '));
+        form.button("Back");
+        form.validResultHandler(response -> onServer(player, () -> {
+            int clicked = response.clickedButtonId();
+            if (clicked >= 0 && clicked < icons.length) {
                 Home latest = ChillZoneHomes.store().getHome(player.getUUID(), index);
-                if (latest != null) ChillZoneHomes.store().setHome(player.getUUID(), index, latest.withIcon(icon));
-                openActions(player, index);
-            }));
-        }
-        form.button("Back", response -> onServer(player, () -> openActions(player, index)));
+                if (latest != null) ChillZoneHomes.store().setHome(player.getUUID(), index, latest.withIcon(icons[clicked]));
+            }
+            openActions(player, index);
+        }));
         send(player, form);
     }
 
